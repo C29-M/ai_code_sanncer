@@ -1,0 +1,4 @@
+backend/venv/
+backend/__pycache__/
+temp/repositories/*
+!temp/repositories/.gitkeep
