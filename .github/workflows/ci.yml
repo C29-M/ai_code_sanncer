@@ -33,9 +33,9 @@ jobs:
         run: ruff check .
 
       - name: Run unit tests
-        # Sandbox tests require the built Docker image. Skip them in CI; they
-        # run locally and in the dedicated sandbox-test job below.
-        run: pytest -v --ignore=tests/test_sandbox_security.py
+        # Sandbox tests carry a pytest.mark.skipif for missing Docker image,
+        # so they skip cleanly in CI without needing --ignore.
+        run: pytest -v
 
   gitleaks:
     name: Secret scan (Gitleaks)
