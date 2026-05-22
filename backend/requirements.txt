@@ -1,5 +1,15 @@
+# Local dev / venv pins — kept as ranges to coexist with other tools (MCP, etc.)
+# in the same Python environment. The authoritative production pins live in the
+# Dockerfile and scanner_versions.json — those are exact and reproducible.
+# Transitive starlette is pinned <0.47 by all current FastAPI 0.115/0.116/0.117/0.118
+# releases. CVE-2025-54121 and CVE-2025-62727 are documented but unreachable until
+# FastAPI widens its starlette range. Tracked in ADR notes; pip-audit runs without
+# --strict so we surface the warning without blocking CI.
 fastapi>=0.115.0
 uvicorn>=0.30.0
 gitpython>=3.1.40
-semgrep>=1.90.0
-pydantic>=2.9.0
+semgrep==1.163.0
+pydantic>=2.11.0,<3.0
+# Dev dependencies (security test suite)
+pytest>=8.0
+httpx>=0.27.0

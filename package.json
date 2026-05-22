@@ -1,0 +1,28 @@
+{
+  "name": "ai_code_sanncer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C29-M/ai_code_sanncer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/C29-M/ai_code_sanncer/issues"
+  },
+  "homepage": "https://github.com/C29-M/ai_code_sanncer#readme",
+  "devDependencies": {
+    "eslint": "^10.4.0",
+    "eslint-plugin-security": "^4.0.0"
+  }
+}

@@ -9,7 +9,10 @@ from exceptions import SemgrepScanError
 
 # Semgrep exits 0 when no findings, 1 when findings exist — both are success for us.
 SEMGREP_SUCCESS_EXIT_CODES = {0, 1}
-SCAN_TIMEOUT_SECONDS = 600
+# Plan: 90-second wall clock — runaway scans get killed by Docker SDK / subprocess.
+# Override with SCAN_TIMEOUT_SECONDS env var when the host (e.g. Docker-on-Windows)
+# is known to be slower than the plan's reference environment.
+SCAN_TIMEOUT_SECONDS = int(os.environ.get("SCAN_TIMEOUT_SECONDS", "90"))
 
 
 def _semgrep_executable() -> str:

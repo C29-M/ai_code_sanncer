@@ -1,13 +1,17 @@
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from exceptions import ScannerError
 from models import ScanRequest, ScanResponse
 from repo_cloner import clone_repository
 from scanner import extract_findings, run_semgrep_scan
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +47,14 @@ async def validation_error_handler(
         status_code=422,
         content={"detail": exc.errors()},
     )
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/", include_in_schema=False)
+async def index() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")
