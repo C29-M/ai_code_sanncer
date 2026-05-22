@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Code Scanner</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1419;
+      color: #e6e6e6;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    h1 {
+      font-size: 32px;
+      margin: 0 0 8px;
+      background: linear-gradient(90deg, #6ee7b7, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: #8b95a5; font-size: 14px; }
+
+    .scan-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .input-row {
+      display: flex;
+      gap: 12px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 16px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      color: #e6e6e6;
+      font-size: 14px;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #3b82f6; }
+    button {
+      padding: 12px 24px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: #2563eb; }
+    button:disabled { background: #4a5568; cursor: not-allowed; }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+    .status.show { display: block; }
+    .status.loading { background: #1e3a5f; color: #93c5fd; }
+    .status.error { background: #5c1d1d; color: #fca5a5; }
+
+    .progress {
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 12px;
+      position: relative;
+    }
+    .progress-bar {
+      position: absolute;
+      height: 100%;
+      width: 30%;
+      background: linear-gradient(90deg, #3b82f6, #6ee7b7);
+      border-radius: 3px;
+      animation: slide 1.6s ease-in-out infinite;
+    }
+    @keyframes slide {
+      0%   { left: -30%; }
+      100% { left: 100%; }
+    }
+    .loader-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 12px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      color: #8b95a5;
+    }
+    .phase { color: #93c5fd; }
+
+    .summary {
+      display: none;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .summary.show { display: flex; }
+    .stat {
+      flex: 1;
+      min-width: 140px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-label { font-size: 12px; color: #8b95a5; text-transform: uppercase; margin-top: 4px; }
+    .stat.error-stat .stat-value { color: #f87171; }
+    .stat.warning-stat .stat-value { color: #fbbf24; }
+    .stat.info-stat .stat-value { color: #60a5fa; }
+
+    .scanner-table-wrap {
+      display: none;
+      margin-bottom: 24px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .scanner-table-wrap.show { display: block; }
+    .scanner-table-title {
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8b95a5;
+      border-bottom: 1px solid #30363d;
+    }
+    .scanner-table { width: 100%; border-collapse: collapse; }
+    .scanner-table th, .scanner-table td {
+      padding: 10px 20px;
+      text-align: left;
+      font-size: 13px;
+      border-bottom: 1px solid #21262d;
+    }
+    .scanner-table th {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8b95a5;
+      background: #0d1117;
+    }
+    .scanner-table tr:last-child td { border-bottom: none; }
+    .scanner-table td.scanner-name { font-weight: 600; color: #e6e6e6; }
+    .scanner-table td.muted { color: #6b7280; }
+    .scanner-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+    .scanner-status.active   { background: #14532d; color: #6ee7b7; }
+    .scanner-status.phase3   { background: #4c1d95; color: #c4b5fd; }
+    .scanner-status.phase4   { background: #1e3a5f; color: #93c5fd; }
+    .scanner-status.phase5   { background: #5c4a1d; color: #fcd34d; }
+    .sev-pill {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-right: 4px;
+    }
+    .sev-pill.c { background: #5c1d1d; color: #fca5a5; }
+    .sev-pill.w { background: #5c4a1d; color: #fcd34d; }
+    .sev-pill.i { background: #1d3a5c; color: #93c5fd; }
+
+    .findings-list { display: flex; flex-direction: column; gap: 12px; }
+    .finding {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-left: 4px solid #6b7280;
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .finding.ERROR { border-left-color: #f87171; }
+    .finding.WARNING { border-left-color: #fbbf24; }
+    .finding.INFO { border-left-color: #60a5fa; }
+
+    .finding-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .finding-title { font-weight: 600; font-size: 15px; color: #e6e6e6; }
+    .severity-badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .severity-badge.ERROR { background: #5c1d1d; color: #fca5a5; }
+    .severity-badge.WARNING { background: #5c4a1d; color: #fcd34d; }
+    .severity-badge.INFO { background: #1d3a5c; color: #93c5fd; }
+
+    .finding-path {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      color: #8b95a5;
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+    .finding-section { margin-top: 12px; }
+    .finding-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8b95a5;
+      margin-bottom: 4px;
+    }
+    .finding-message { font-size: 14px; line-height: 1.5; color: #cbd5e0; margin-bottom: 4px; }
+    .finding-impact {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #fecaca;
+      background: rgba(248, 113, 113, 0.08);
+      border-left: 3px solid #f87171;
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+    .finding-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; }
+    .finding-meta a {
+      color: #60a5fa;
+      text-decoration: none;
+      padding: 3px 8px;
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    .finding-meta a:hover { background: #334155; }
+    .finding-code {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: #0d1117;
+      border-radius: 6px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      color: #e6e6e6;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .empty { text-align: center; padding: 40px; color: #8b95a5; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AI Code Scanner</h1>
+      <div class="subtitle">Scan a public GitHub repository for security vulnerabilities</div>
+    </header>
+
+    <div class="scan-card">
+      <div class="input-row">
+        <input
+          type="text"
+          id="repoUrl"
+          placeholder="https://github.com/owner/repo"
+          value="https://github.com/OWASP/NodeGoat"
+        />
+        <button id="scanBtn" onclick="runScan()">Scan</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div id="summary" class="summary">
+      <div class="stat">
+        <div class="stat-value" id="totalCount">0</div>
+        <div class="stat-label">Total Findings</div>
+      </div>
+      <div class="stat error-stat">
+        <div class="stat-value" id="errorCount">0</div>
+        <div class="stat-label">Critical</div>
+      </div>
+      <div class="stat warning-stat">
+        <div class="stat-value" id="warningCount">0</div>
+        <div class="stat-label">Warning</div>
+      </div>
+      <div class="stat info-stat">
+        <div class="stat-value" id="infoCount">0</div>
+        <div class="stat-label">Info</div>
+      </div>
+    </div>
+
+    <div id="scannerTable" class="scanner-table-wrap">
+      <div class="scanner-table-title">Scanner Breakdown</div>
+      <table class="scanner-table">
+        <thead>
+          <tr>
+            <th>Scanner</th>
+            <th>Status</th>
+            <th>Findings</th>
+            <th>Severity (C / W / I)</th>
+            <th>Detects</th>
+          </tr>
+        </thead>
+        <tbody id="scannerTableBody"></tbody>
+      </table>
+    </div>
+
+    <div id="findings" class="findings-list"></div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function shortName(checkId) {
+      const parts = checkId.split(".");
+      return parts[parts.length - 1].replace(/-/g, " ");
+    }
+
+    function shortPath(fullPath) {
+      const marker = "repositories";
+      const idx = fullPath.indexOf(marker);
+      if (idx === -1) return fullPath;
+      const after = fullPath.slice(idx + marker.length + 1);
+      const parts = after.split(/[\\\/]/);
+      parts.shift();
+      return parts.join("/");
+    }
+
+    function cweLink(cwe) {
+      if (!cwe) return null;
+      const val = Array.isArray(cwe) ? cwe[0] : cwe;
+      const m = /CWE-(\d+)/.exec(val);
+      if (!m) return null;
+      return { id: `CWE-${m[1]}`, num: m[1], url: `https://cwe.mitre.org/data/definitions/${m[1]}.html` };
+    }
+
+    // Plain-English impact for common CWEs.
+    const CWE_IMPACT = {
+      "22":  "Attackers can read arbitrary files on the server (source code, secrets, /etc/passwd) by injecting paths like ../../etc/passwd.",
+      "78":  "Attackers control shell commands executed on the server — full server compromise is possible.",
+      "79":  "Attackers can inject JavaScript into other users' browsers, stealing session cookies, credentials, or performing actions on their behalf.",
+      "89":  "Attackers can read, modify, or delete any data in the database, bypass authentication, or in some cases take over the database server.",
+      "94":  "Attackers can execute arbitrary code inside the application process — full application compromise.",
+      "95":  "User input is passed to eval(), allowing attackers to execute arbitrary code on the server.",
+      "200": "Sensitive data (PII, internal config, tokens) leaks to users who shouldn't see it.",
+      "209": "Detailed error messages and stack traces leak internals attackers use to plan further attacks.",
+      "259": "Credentials are baked into source code — anyone with code access (or a leak) gets free authenticated access.",
+      "287": "Authentication can be bypassed entirely, letting attackers access accounts and data without credentials.",
+      "295": "Disabled or improper TLS certificate validation lets attackers intercept and modify traffic (man-in-the-middle).",
+      "311": "Sensitive data is sent or stored unencrypted — anyone on the network or with disk access can read it.",
+      "326": "Encryption is weak enough that an attacker with modest resources can decrypt the data.",
+      "327": "A broken or risky cryptographic algorithm is used (MD5/SHA1/DES) — protections can be defeated.",
+      "338": "Insecure random number generator used for security-sensitive values (tokens, session IDs) — values can be predicted.",
+      "352": "Attackers trick logged-in users into submitting unwanted state-changing requests (CSRF).",
+      "377": "Insecure temporary files can be hijacked or read by other local users.",
+      "400": "Uncontrolled resource consumption — attackers can crash the service or exhaust CPU/memory (DoS).",
+      "434": "Attackers upload malicious files (webshells, executables) and trigger them server-side — full compromise.",
+      "502": "Deserializing untrusted data can trigger remote code execution on the server.",
+      "601": "Open redirect lets attackers craft phishing URLs that look like they come from your trusted domain.",
+      "611": "XML external entity processing — attackers can read server files, perform SSRF, or DoS the parser.",
+      "732": "File or resource permissions are too permissive — unintended users can read or modify them.",
+      "798": "Credentials are hardcoded in source — once leaked (or once anyone has the repo), they're compromised forever.",
+      "915": "Mass-assignment lets attackers set fields they shouldn't be able to (e.g. is_admin=true) via crafted requests.",
+      "918": "Server-side request forgery — attackers make your server fetch internal URLs (admin panels, cloud metadata).",
+      "1004":"Cookies without HttpOnly are readable by JavaScript — XSS attacks can steal them directly.",
+      "1275":"Cookies without SameSite are sent in cross-site requests — exposes users to CSRF.",
+    };
+
+    function impactText(cwe, message) {
+      if (cwe && CWE_IMPACT[cwe.num]) return CWE_IMPACT[cwe.num];
+      // Fallbacks based on message keywords
+      const m = (message || "").toLowerCase();
+      if (m.includes("sql injection")) return CWE_IMPACT["89"];
+      if (m.includes("command injection")) return CWE_IMPACT["78"];
+      if (m.includes("eval"))            return CWE_IMPACT["95"];
+      if (m.includes("xss") || m.includes("cross-site script")) return CWE_IMPACT["79"];
+      if (m.includes("hardcoded"))       return CWE_IMPACT["798"];
+      if (m.includes("deserial"))        return CWE_IMPACT["502"];
+      if (m.includes("path traversal") || m.includes("directory traversal")) return CWE_IMPACT["22"];
+      if (m.includes("ssrf"))            return CWE_IMPACT["918"];
+      if (m.includes("csrf"))            return CWE_IMPACT["352"];
+      return "An attacker could exploit this weakness to compromise application security. Review the linked CWE for specific attack scenarios.";
+    }
+
+    function setStatus(msg, kind) {
+      const el = $("status");
+      el.className = "status show " + kind;
+      el.textContent = msg;
+    }
+    function clearStatus() { $("status").className = "status"; }
+
+    let timerInterval = null;
+    let phaseInterval = null;
+
+    const PHASES = [
+      { at:  0, label: "Validating repository URL…" },
+      { at:  2, label: "Cloning repository…" },
+      { at:  8, label: "Starting Docker sandbox…" },
+      { at: 14, label: "Loading Semgrep rules…" },
+      { at: 20, label: "Scanning source code…" },
+      { at: 60, label: "Still scanning — large repo, hang tight…" },
+      { at: 120, label: "Almost done, parsing findings…" },
+    ];
+
+    function startLoader() {
+      const start = Date.now();
+      const el = $("status");
+      el.className = "status show loading";
+      el.innerHTML = `
+        <div>Scan in progress</div>
+        <div class="progress"><div class="progress-bar"></div></div>
+        <div class="loader-meta">
+          <span class="phase" id="phase">Validating repository URL…</span>
+          <span id="timer">0.0s</span>
+        </div>
+      `;
+
+      timerInterval = setInterval(() => {
+        const elapsed = (Date.now() - start) / 1000;
+        const t = $("timer");
+        if (t) t.textContent = elapsed.toFixed(1) + "s";
+      }, 100);
+
+      phaseInterval = setInterval(() => {
+        const elapsed = (Date.now() - start) / 1000;
+        let current = PHASES[0].label;
+        for (const p of PHASES) {
+          if (elapsed >= p.at) current = p.label;
+        }
+        const ph = $("phase");
+        if (ph && ph.textContent !== current) ph.textContent = current;
+      }, 500);
+    }
+
+    function stopLoader() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      if (phaseInterval) { clearInterval(phaseInterval); phaseInterval = null; }
+    }
+
+    async function runScan() {
+      const url = $("repoUrl").value.trim();
+      if (!url) { setStatus("Please enter a GitHub URL.", "error"); return; }
+
+      $("scanBtn").disabled = true;
+      $("summary").classList.remove("show");
+      $("scannerTable").classList.remove("show");
+      $("findings").innerHTML = "";
+      startLoader();
+
+      try {
+        const res = await fetch("/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repo_url: url }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          stopLoader();
+          setStatus("Scan failed: " + (data.detail || res.statusText), "error");
+          return;
+        }
+
+        stopLoader();
+        renderResults(data);
+        clearStatus();
+      } catch (e) {
+        stopLoader();
+        setStatus("Network error: " + e.message, "error");
+      } finally {
+        $("scanBtn").disabled = false;
+      }
+    }
+
+    const ACTIVE_SCANNERS = [
+      { name: "Semgrep", statusLabel: "ACTIVE" },
+    ];
+
+    // Turn a check_id like "javascript.lang.security.eval-detected.eval-detected"
+    // into a clean human label like "eval injection".
+    function findingShortLabel(r) {
+      const id = r.check_id || "";
+      const parts = id.split(".");
+      let raw = parts[parts.length - 1] || "";
+      // Many semgrep rules repeat the last segment (foo.bar.baz.baz) — back up one.
+      if (parts.length >= 2 && parts[parts.length - 2] === raw) {
+        raw = parts[parts.length - 1];
+      }
+      // Strip common suffixes
+      let label = raw
+        .replace(/-detected$/, "")
+        .replace(/-found$/, "")
+        .replace(/-rule$/, "")
+        .replace(/-/g, " ")
+        .replace(/_/g, " ")
+        .trim();
+      // Light prettification
+      label = label.replace(/\beval\b/i, "eval injection")
+                   .replace(/\bxss\b/i, "XSS")
+                   .replace(/\bsqli\b/i, "SQL injection")
+                   .replace(/\bssrf\b/i, "SSRF")
+                   .replace(/\bcsrf\b/i, "CSRF");
+      return label || "unknown";
+    }
+
+    function detectedSummary(findings) {
+      const counts = {};
+      findings.forEach(r => {
+        const label = findingShortLabel(r);
+        counts[label] = (counts[label] || 0) + 1;
+      });
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      return sorted
+        .map(([label, n]) => n > 1 ? `${label} (${n})` : label)
+        .join(", ") || "—";
+    }
+
+    function renderScannerTable(results) {
+      // Today every finding is from Semgrep. When Phase 3+ scanners come online
+      // they'll set `tool` on the unified finding and group naturally.
+      const counts = {};
+      const byTool = {};
+      results.forEach(r => {
+        const tool = (r.tool || "Semgrep");
+        const sev = (r.extra && r.extra.severity) || "INFO";
+        counts[tool] = counts[tool] || { total: 0, c: 0, w: 0, i: 0 };
+        counts[tool].total++;
+        if (sev === "ERROR") counts[tool].c++;
+        else if (sev === "WARNING") counts[tool].w++;
+        else counts[tool].i++;
+        (byTool[tool] = byTool[tool] || []).push(r);
+      });
+
+      const body = $("scannerTableBody");
+      body.innerHTML = ACTIVE_SCANNERS
+        .filter(s => counts[s.name])
+        .map(s => {
+          const c = counts[s.name];
+          const detected = detectedSummary(byTool[s.name] || []);
+          return `
+            <tr>
+              <td class="scanner-name">${s.name}</td>
+              <td><span class="scanner-status active">${s.statusLabel}</span></td>
+              <td>${c.total}</td>
+              <td>
+                <span class="sev-pill c">${c.c}</span>
+                <span class="sev-pill w">${c.w}</span>
+                <span class="sev-pill i">${c.i}</span>
+              </td>
+              <td class="muted">${escapeHtml(detected)}</td>
+            </tr>`;
+        }).join("");
+
+      $("scannerTable").classList.add("show");
+    }
+
+    function renderResults(data) {
+      const results = (data.findings && data.findings.results) || [];
+
+      let errors = 0, warnings = 0, infos = 0;
+      results.forEach(r => {
+        const sev = (r.extra && r.extra.severity) || "INFO";
+        if (sev === "ERROR") errors++;
+        else if (sev === "WARNING") warnings++;
+        else infos++;
+      });
+
+      $("totalCount").textContent = data.findings_count;
+      $("errorCount").textContent = errors;
+      $("warningCount").textContent = warnings;
+      $("infoCount").textContent = infos;
+      $("summary").classList.add("show");
+
+      renderScannerTable(results);
+
+      const list = $("findings");
+      if (results.length === 0) {
+        list.innerHTML = '<div class="empty">No vulnerabilities found.</div>';
+        return;
+      }
+
+      list.innerHTML = results.map(r => {
+        const sev = (r.extra && r.extra.severity) || "INFO";
+        const meta = (r.extra && r.extra.metadata) || {};
+        const cwe = cweLink(meta.cwe);
+        const sgLink = meta.shortlink || (r.extra && r.extra.shortlink);
+        const codeLine = r.extra && r.extra.lines ? r.extra.lines : "";
+
+        const impact = impactText(cwe, r.extra.message);
+
+        return `
+          <div class="finding ${sev}">
+            <div class="finding-header">
+              <div class="finding-title">${shortName(r.check_id)}</div>
+              <span class="severity-badge ${sev}">${sev}</span>
+            </div>
+            <div class="finding-path">${shortPath(r.path)} : line ${r.start.line}</div>
+
+            <div class="finding-section">
+              <div class="finding-section-label">What's wrong</div>
+              <div class="finding-message">${escapeHtml(r.extra.message || "")}</div>
+            </div>
+
+            <div class="finding-section">
+              <div class="finding-section-label">Why it matters</div>
+              <div class="finding-impact">${escapeHtml(impact)}</div>
+            </div>
+
+            <div class="finding-meta">
+              ${cwe ? `<a href="${cwe.url}" target="_blank" rel="noopener">${cwe.id}</a>` : ""}
+              ${sgLink ? `<a href="${sgLink}" target="_blank" rel="noopener">Semgrep rule</a>` : ""}
+              ${meta.owasp ? `<a href="https://owasp.org/Top10/" target="_blank" rel="noopener">OWASP: ${Array.isArray(meta.owasp) ? meta.owasp[0] : meta.owasp}</a>` : ""}
+            </div>
+            ${codeLine ? `<div class="finding-code">${escapeHtml(codeLine)}</div>` : ""}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>

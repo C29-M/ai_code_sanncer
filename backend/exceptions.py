@@ -20,6 +20,13 @@ class RepoCloneError(ScannerError):
         super().__init__(message, status_code=502)
 
 
+class RepoTooLargeError(ScannerError):
+    def __init__(
+        self, message: str = "Repository exceeds the maximum allowed size."
+    ) -> None:
+        super().__init__(message, status_code=413)
+
+
 class SemgrepScanError(ScannerError):
     def __init__(self, message: str = "Semgrep scan failed.") -> None:
         super().__init__(message, status_code=500)
