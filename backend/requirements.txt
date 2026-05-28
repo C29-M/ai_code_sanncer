@@ -8,8 +8,29 @@
 fastapi>=0.115.0
 uvicorn>=0.30.0
 gitpython>=3.1.40
+<<<<<<< Updated upstream
 semgrep==1.163.0
 pydantic>=2.11.0,<3.0
 # Dev dependencies (security test suite)
 pytest>=8.0
 httpx>=0.27.0
+=======
+semgrep>=1.90.0
+pydantic>=2.9.0
+
+# Week 4 — Python language scanners
+bandit>=1.7.5
+safety>=2.3.0
+
+# Week 4 — Git history scanner
+trufflehog>=3.0.0
+
+# External tools (install separately):
+# Gitleaks:        https://github.com/gitleaks/gitleaks/releases
+# Trivy:           https://github.com/aquasecurity/trivy/releases
+# Gosec:           go install github.com/securego/gosec/v2/cmd/gosec@latest
+# ESLint:          npm i -g eslint eslint-plugin-security
+# SpotBugs:        via Maven spotbugs plugin (configured in pom.xml)
+# OWASP Dep-Check: https://jeremylong.github.io/DependencyCheck/dependency-check-cli/
+#                  Init DB once: dependency-check --updateonly
+>>>>>>> Stashed changes

@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 name: CI
 
 on:
@@ -64,3 +65,71 @@ jobs:
         # blocked by FastAPI's compatibility range) surface as warnings,
         # not CI failures. See ADR-001 for the policy.
         run: pip-audit -r backend/requirements.txt
+=======
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-lint-and-test:
+    name: Lint + Unit tests (backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Run unit tests
+        # Sandbox tests carry a pytest.mark.skipif for missing Docker image,
+        # so they skip cleanly in CI without needing --ignore.
+        run: pytest -v
+
+  gitleaks:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  pip-audit:
+    name: Python dependency CVE audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pip-audit
+        run: pip install pip-audit
+      - name: Audit backend dependencies
+        # Without --strict so unreachable upstream CVEs (e.g. starlette CVEs
+        # blocked by FastAPI's compatibility range) surface as warnings,
+        # not CI failures. See ADR-001 for the policy.
+        run: pip-audit -r backend/requirements.txt
+>>>>>>> Stashed changes

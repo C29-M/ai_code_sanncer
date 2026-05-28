@@ -14,9 +14,13 @@ from scanner import (
     _parse_semgrep_json,
 )
 
+<<<<<<< Updated upstream
 logger = logging.getLogger(__name__)
 
 DEFAULT_IMAGE = "ai-code-scanner-semgrep:latest"
+=======
+DEFAULT_IMAGE = "ai-code-scanner:latest"
+>>>>>>> Stashed changes
 REPO_MOUNT_PATH = "/repo"
 DEFAULT_OFFLINE_CONFIG = "/opt/semgrep-rules/java"
 DOCKER_MEMORY = os.environ.get("DOCKER_SEMGREP_MEMORY", "4g")
@@ -111,8 +115,6 @@ def run_semgrep_in_docker(repo_path: Path) -> dict:
         "run",
         "--rm",
         "-i",
-        "--network",
-        network,
         "--read-only",
         "--security-opt",
         "no-new-privileges:true",
@@ -126,6 +128,8 @@ def run_semgrep_in_docker(repo_path: Path) -> dict:
         DOCKER_CPUS,
         "--tmpfs",
         f"/tmp:{DOCKER_TMPFS_TMP}",
+        "--network",
+        network,
         "-e",
         "PYTHONUNBUFFERED=1",
         "-v",

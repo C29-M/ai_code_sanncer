@@ -13,6 +13,7 @@
       color: #e6e6e6;
       min-height: 100vh;
     }
+<<<<<<< Updated upstream
     .container {
       max-width: 1100px;
       margin: 0 auto;
@@ -28,11 +29,20 @@
       background: linear-gradient(90deg, #6ee7b7, #3b82f6);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+=======
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+    header { text-align: center; margin-bottom: 32px; }
+    h1 {
+      font-size: 32px; margin: 0 0 8px;
+      background: linear-gradient(90deg, #6ee7b7, #3b82f6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+>>>>>>> Stashed changes
       background-clip: text;
     }
     .subtitle { color: #8b95a5; font-size: 14px; }
 
     .scan-card {
+<<<<<<< Updated upstream
       background: #161b22;
       border: 1px solid #30363d;
       border-radius: 12px;
@@ -64,10 +74,27 @@
       font-weight: 600;
       cursor: pointer;
       transition: background 0.15s;
+=======
+      background: #161b22; border: 1px solid #30363d;
+      border-radius: 12px; padding: 24px; margin-bottom: 24px;
+    }
+    .input-row { display: flex; gap: 12px; }
+    input[type="text"] {
+      flex: 1; padding: 12px 16px; background: #0d1117;
+      border: 1px solid #30363d; border-radius: 8px;
+      color: #e6e6e6; font-size: 14px; outline: none;
+    }
+    input[type="text"]:focus { border-color: #3b82f6; }
+    button {
+      padding: 12px 24px; background: #3b82f6; color: white;
+      border: none; border-radius: 8px; font-size: 14px;
+      font-weight: 600; cursor: pointer; transition: background 0.15s;
+>>>>>>> Stashed changes
     }
     button:hover:not(:disabled) { background: #2563eb; }
     button:disabled { background: #4a5568; cursor: not-allowed; }
 
+<<<<<<< Updated upstream
     .status {
       margin-top: 16px;
       padding: 12px 16px;
@@ -271,23 +298,176 @@
     }
 
     .empty { text-align: center; padding: 40px; color: #8b95a5; }
+=======
+    .status { margin-top: 16px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; }
+    .status.show  { display: block; }
+    .status.loading { background: #1e3a5f; color: #93c5fd; }
+    .status.error   { background: #5c1d1d; color: #fca5a5; }
+
+    .progress { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 12px; position: relative; }
+    .progress-bar {
+      position: absolute; height: 100%; width: 30%;
+      background: linear-gradient(90deg, #3b82f6, #6ee7b7);
+      border-radius: 3px; animation: slide 1.6s ease-in-out infinite;
+    }
+    @keyframes slide { 0% { left: -30%; } 100% { left: 100%; } }
+    .loader-meta { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; font-family: "SFMono-Regular", Consolas, monospace; color: #8b95a5; }
+    .phase { color: #93c5fd; }
+
+    /* ── Summary stat cards ── */
+    .summary { display: none; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .summary.show { display: flex; }
+    .stat { flex: 1; min-width: 120px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-label { font-size: 12px; color: #8b95a5; text-transform: uppercase; margin-top: 4px; }
+    .stat.critical-stat .stat-value { color: #f87171; }
+    .stat.high-stat     .stat-value { color: #fbbf24; }
+    .stat.medium-stat   .stat-value { color: #f59e0b; }
+    .stat.low-stat      .stat-value { color: #60a5fa; }
+
+    /* ── Scanner breakdown table ── */
+    .scanner-table-wrap { display: none; margin-bottom: 24px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; overflow: hidden; }
+    .scanner-table-wrap.show { display: block; }
+    .scanner-table-title { padding: 14px 20px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #8b95a5; border-bottom: 1px solid #30363d; }
+    .scanner-table { width: 100%; border-collapse: collapse; }
+    .scanner-table th, .scanner-table td { padding: 10px 20px; text-align: left; font-size: 13px; border-bottom: 1px solid #21262d; }
+    .scanner-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #8b95a5; background: #0d1117; }
+    .scanner-table tr:last-child td { border-bottom: none; }
+    .scanner-table td.scanner-name { font-weight: 600; color: #e6e6e6; }
+    .scanner-table td.muted { color: #6b7280; }
+    .scanner-status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; }
+    .scanner-status.active         { background: #14532d; color: #6ee7b7; }
+    .scanner-status.skipped        { background: #2d2d2d; color: #6b7280; }
+    .scanner-status.not_applicable { background: #1a1a2e; color: #4b5563; }
+
+    /* severity pills in scanner table */
+    .sev-pill { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 11px; font-weight: 700; margin-right: 4px; }
+    .sev-pill.c { background: #5c1d1d; color: #fca5a5; }
+    .sev-pill.h { background: #5c4a1d; color: #fcd34d; }
+    .sev-pill.m { background: #4a3728; color: #f59e0b; }
+    .sev-pill.l { background: #1e3a5f; color: #93c5fd; }
+
+    /* ── Finding cards ── */
+    .findings-list { display: flex; flex-direction: column; gap: 12px; }
+    .finding {
+      background: #161b22; border: 1px solid #30363d;
+      border-left: 4px solid #6b7280; border-radius: 8px; padding: 16px 20px;
+    }
+    .finding.CRITICAL { border-left-color: #f87171; }
+    .finding.HIGH     { border-left-color: #fbbf24; }
+    .finding.MEDIUM   { border-left-color: #f59e0b; }
+    .finding.LOW      { border-left-color: #60a5fa; }
+    .finding.INFO     { border-left-color: #374151; }
+
+    .finding-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .finding-title  { font-weight: 600; font-size: 15px; color: #e6e6e6; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* tool badge */
+    .tool-badge { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+    .tool-badge.semgrep  { background: #1a3a5c; color: #60a5fa; }
+    .tool-badge.gitleaks { background: #3b1d5c; color: #c4b5fd; }
+    .tool-badge.trivy    { background: #1a4a2a; color: #6ee7b7; }
+    .tool-badge.bandit      { background: #3a2a1a; color: #fb923c; }
+    .tool-badge.safety      { background: #1a3a2a; color: #4ade80; }
+    .tool-badge.eslint      { background: #2a1a3a; color: #a78bfa; }
+    .tool-badge.gosec       { background: #1a2a3a; color: #38bdf8; }
+    .tool-badge.trufflehog  { background: #3a1a1a; color: #f87171; }
+    .tool-badge.spotbugs         { background: #2a2a1a; color: #fbbf24; }
+    .tool-badge.owasp_depcheck   { background: #1a2a1a; color: #34d399; }
+
+    /* category badge */
+    .cat-badge { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
+    .cat-badge.sast    { background: rgba(96,165,250,0.12); color: #93c5fd; }
+    .cat-badge.secrets { background: rgba(248,113,113,0.12); color: #fca5a5; }
+    .cat-badge.cve     { background: rgba(251,191,36,0.12);  color: #fcd34d; }
+    .cat-badge.history { background: rgba(196,181,253,0.12); color: #c4b5fd; }
+
+    /* risk score */
+    .risk-score { font-size: 12px; font-weight: 700; font-family: "SFMono-Regular", Consolas, monospace; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.06); color: #8b95a5; }
+    .risk-score.high { color: #f87171; }
+
+    .severity-badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+    .severity-badge.CRITICAL { background: #5c1d1d; color: #fca5a5; }
+    .severity-badge.HIGH     { background: #5c4a1d; color: #fcd34d; }
+    .severity-badge.MEDIUM   { background: #4a3728; color: #f59e0b; }
+    .severity-badge.LOW      { background: #1e3a5f; color: #93c5fd; }
+    .severity-badge.INFO     { background: #1c2638; color: #6b7280; }
+
+    .finding-path { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; color: #8b95a5; margin-bottom: 8px; word-break: break-all; }
+    .finding-section { margin-top: 12px; }
+    .finding-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #8b95a5; margin-bottom: 4px; }
+    .finding-message { font-size: 14px; line-height: 1.5; color: #cbd5e0; margin-bottom: 4px; }
+    .finding-impact { font-size: 13px; line-height: 1.5; color: #fecaca; background: rgba(248,113,113,0.08); border-left: 3px solid #f87171; padding: 8px 12px; border-radius: 4px; }
+    .finding-severity-reason {
+      font-size: 13px; line-height: 1.5; padding: 8px 12px;
+      border-radius: 4px; border-left: 3px solid #6b7280;
+      background: rgba(139,149,165,0.08); color: #cbd5e0;
+    }
+    .finding.CRITICAL .finding-severity-reason { background: rgba(248,113,113,0.06); border-left-color: #f87171; color: #fecaca; }
+    .finding.HIGH     .finding-severity-reason { background: rgba(251,191,36,0.06);  border-left-color: #fbbf24; color: #fcd34d; }
+    .finding.MEDIUM   .finding-severity-reason { background: rgba(245,158,11,0.06);  border-left-color: #f59e0b; color: #fcd34d; }
+    .finding.LOW      .finding-severity-reason { background: rgba(96,165,250,0.06);  border-left-color: #60a5fa; color: #93c5fd; }
+
+    .finding-severity-meta { margin-top: 6px; font-size: 11px; font-family: "SFMono-Regular", Consolas, monospace; color: #8b95a5; letter-spacing: 0.3px; }
+    .finding-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; margin-top: 12px; }
+    .finding-meta a { color: #60a5fa; text-decoration: none; padding: 3px 8px; background: #1e293b; border-radius: 4px; }
+    .finding-meta a:hover { background: #334155; }
+    .finding-code { margin-top: 10px; padding: 10px 14px; background: #0d1117; border-radius: 6px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; color: #e6e6e6; white-space: pre-wrap; word-break: break-all; }
+
+    /* CVE-specific */
+    .cvss-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; font-family: monospace; margin-left: 8px; }
+    .cvss-badge.critical { background: #5c1d1d; color: #fca5a5; }
+    .cvss-badge.high     { background: #5c4a1d; color: #fcd34d; }
+    .cvss-badge.medium   { background: #4a3728; color: #f59e0b; }
+    .cvss-badge.low      { background: #1e3a5f; color: #93c5fd; }
+
+    .empty { text-align: center; padding: 40px; color: #8b95a5; }
+
+    /* ── Scan metadata bar ── */
+    .meta-bar {
+      display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+      padding: 10px 18px; margin-bottom: 20px; font-size: 12px;
+      font-family: "SFMono-Regular", Consolas, monospace; color: #8b95a5;
+    }
+    .meta-bar.show { display: flex; }
+    .meta-bar .meta-repo { color: #e6e6e6; font-weight: 600; }
+    .meta-bar .meta-sep  { color: #30363d; }
+    .meta-bar .meta-tag  { background: #1e293b; border-radius: 6px; padding: 2px 8px; color: #60a5fa; }
+
+    /* filter pills */
+    .filter-bar { display: none; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .filter-bar.show { display: flex; }
+    .filter-pill { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #30363d; background: #161b22; color: #8b95a5; transition: all 0.15s; }
+    .filter-pill:hover  { border-color: #6b7280; color: #e6e6e6; }
+    .filter-pill.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+>>>>>>> Stashed changes
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>AI Code Scanner</h1>
+<<<<<<< Updated upstream
       <div class="subtitle">Scan a public GitHub repository for security vulnerabilities</div>
+=======
+      <div class="subtitle">Semgrep · Gitleaks · Trivy · Bandit · Safety · ESLint · Gosec · TruffleHog · SpotBugs · OWASP Dep-Check — unified findings with risk scoring</div>
+>>>>>>> Stashed changes
     </header>
 
     <div class="scan-card">
       <div class="input-row">
+<<<<<<< Updated upstream
         <input
           type="text"
           id="repoUrl"
           placeholder="https://github.com/owner/repo"
           value="https://github.com/OWASP/NodeGoat"
         />
+=======
+        <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo"
+               value="https://github.com/OWASP/NodeGoat" />
+>>>>>>> Stashed changes
         <button id="scanBtn" onclick="runScan()">Scan</button>
       </div>
       <div id="status" class="status"></div>
@@ -298,6 +478,7 @@
         <div class="stat-value" id="totalCount">0</div>
         <div class="stat-label">Total Findings</div>
       </div>
+<<<<<<< Updated upstream
       <div class="stat error-stat">
         <div class="stat-value" id="errorCount">0</div>
         <div class="stat-label">Critical</div>
@@ -309,6 +490,23 @@
       <div class="stat info-stat">
         <div class="stat-value" id="infoCount">0</div>
         <div class="stat-label">Info</div>
+=======
+      <div class="stat critical-stat">
+        <div class="stat-value" id="criticalCount">0</div>
+        <div class="stat-label">Critical</div>
+      </div>
+      <div class="stat high-stat">
+        <div class="stat-value" id="highCount">0</div>
+        <div class="stat-label">High</div>
+      </div>
+      <div class="stat medium-stat">
+        <div class="stat-value" id="mediumCount">0</div>
+        <div class="stat-label">Medium</div>
+      </div>
+      <div class="stat low-stat">
+        <div class="stat-value" id="lowCount">0</div>
+        <div class="stat-label">Low</div>
+>>>>>>> Stashed changes
       </div>
     </div>
 
@@ -317,34 +515,155 @@
       <table class="scanner-table">
         <thead>
           <tr>
+<<<<<<< Updated upstream
             <th>Scanner</th>
             <th>Status</th>
             <th>Findings</th>
             <th>Severity (C / W / I)</th>
             <th>Detects</th>
+=======
+            <th>Scanner</th><th>Status</th><th>Findings</th>
+            <th>Severity (C / H / M / L)</th><th>Category</th>
+>>>>>>> Stashed changes
           </tr>
         </thead>
         <tbody id="scannerTableBody"></tbody>
       </table>
     </div>
 
+<<<<<<< Updated upstream
+=======
+    <div id="metaBar" class="meta-bar">
+      <span class="meta-repo" id="metaRepo"></span>
+      <span class="meta-sep">·</span>
+      <span id="metaFindings"></span>
+      <span class="meta-sep">·</span>
+      <span id="metaTime"></span>
+      <span class="meta-sep">·</span>
+      <span class="meta-tag">Docker sandbox</span>
+    </div>
+
+    <div id="filterBar" class="filter-bar">
+      <span class="filter-pill active" onclick="setFilter('all',this)">All</span>
+      <span class="filter-pill" onclick="setFilter('CRITICAL',this)">Critical</span>
+      <span class="filter-pill" onclick="setFilter('HIGH',this)">High</span>
+      <span class="filter-pill" onclick="setFilter('MEDIUM',this)">Medium</span>
+      <span class="filter-pill" onclick="setFilter('LOW',this)">Low / Info</span>
+      <span class="filter-pill" onclick="setFilter('sast',this)">SAST</span>
+      <span class="filter-pill" onclick="setFilter('secrets',this)">Secrets</span>
+      <span class="filter-pill" onclick="setFilter('cve',this)">CVE</span>
+    </div>
+
+>>>>>>> Stashed changes
     <div id="findings" class="findings-list"></div>
   </div>
 
   <script>
     const $ = (id) => document.getElementById(id);
 
+<<<<<<< Updated upstream
     function shortName(checkId) {
       const parts = checkId.split(".");
       return parts[parts.length - 1].replace(/-/g, " ");
     }
 
     function shortPath(fullPath) {
+=======
+    // ── Severity helpers ────────────────────────────────────────────────────
+    const SEVERITY_RANK = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, INFO: 0 };
+
+    const SEVERITY_REASONS = {
+      CRITICAL: "High confidence this is exploitable. Priority fix.",
+      HIGH:     "Dangerous pattern detected. Confirm exploitability and fix soon.",
+      MEDIUM:   "Potentially exploitable — review in context of your application.",
+      LOW:      "Minor risk / best-practice issue. Not directly exploitable.",
+      INFO:     "Code smell or audit lead. Not directly exploitable.",
+    };
+
+    // CWE-specific reason overrides (Semgrep findings)
+    const CWE_WHY_REASON = {
+      "22":  "Path traversal sink reached — attacker can escape the intended directory.",
+      "78":  "User input flows into a shell command — command injection is reachable.",
+      "79":  "User input written to the DOM without escaping — XSS is reachable.",
+      "89":  "User input flows into a SQL query — injection proven by data flow.",
+      "94":  "Untrusted data reaches a code-execution sink.",
+      "95":  "Request body reaches eval() — Semgrep proved the data flow, RCE is reachable.",
+      "200": "Sensitive value rendered to output that may be exposed externally.",
+      "209": "Stack trace returned to clients — internals leak.",
+      "259": "Credential literal in source — confirmed hardcoded secret.",
+      "287": "Authentication check missing or bypassable on this path.",
+      "295": "TLS verification disabled — MITM is reachable.",
+      "311": "Sensitive data sent or stored without encryption.",
+      "326": "Weak key size or insufficient entropy.",
+      "327": "Broken cryptographic primitive used (MD5/SHA1/DES).",
+      "338": "Non-cryptographic RNG used for a security-sensitive value.",
+      "352": "State-changing endpoint without CSRF protection.",
+      "400": "Unbounded input controls resource consumption — DoS reachable.",
+      "434": "Uploaded file not validated — webshell upload reachable.",
+      "502": "Untrusted data reaches a deserializer — RCE is reachable.",
+      "601": "Redirect target taken from user input — open redirect.",
+      "611": "XML parser resolves external entities — XXE reachable.",
+      "798": "Hardcoded credential in source — leak is permanent.",
+      "915": "Bulk-assignment without field allow-list — mass assignment.",
+      "918": "Request URL taken from user input — SSRF reachable.",
+      "1004":"Cookie set without HttpOnly — script-accessible.",
+      "1275":"Cookie set without SameSite — sent in cross-site requests.",
+    };
+
+    // Plain-English "Why it matters" for common CWEs
+    const CWE_IMPACT = {
+      "22":  "Attackers can read arbitrary files on the server.",
+      "78":  "Attackers run shell commands on the server — full takeover.",
+      "79":  "Attackers inject JS into other users' browsers, stealing sessions.",
+      "89":  "Attackers can read/modify/delete the entire database.",
+      "94":  "Attackers execute arbitrary code in the application process.",
+      "95":  "User input reaches eval() — remote code execution.",
+      "200": "Sensitive data leaks to unauthorised users.",
+      "209": "Stack traces leak internals attackers use to plan further attacks.",
+      "259": "Hardcoded credentials — anyone with code access is authenticated.",
+      "287": "Authentication can be bypassed entirely.",
+      "295": "Improper TLS validation enables man-in-the-middle attacks.",
+      "311": "Sensitive data sent or stored unencrypted.",
+      "326": "Weak encryption — attacker can decrypt with modest resources.",
+      "327": "Broken crypto algorithm (MD5/SHA1/DES) — defeated.",
+      "338": "Insecure RNG — tokens/IDs are predictable.",
+      "352": "Logged-in users tricked into unwanted state-changing requests.",
+      "400": "Uncontrolled resource consumption — DoS via CPU/memory exhaustion.",
+      "434": "Attackers upload + execute malicious files (webshells).",
+      "502": "Untrusted deserialization triggers remote code execution.",
+      "601": "Open redirect enables phishing from your trusted domain.",
+      "611": "XXE — attackers read server files via XML parsing.",
+      "798": "Hardcoded credential in source — leak is permanent.",
+      "915": "Mass-assignment lets attackers set fields like is_admin=true.",
+      "918": "SSRF — server fetches internal URLs the attacker chooses.",
+      "1004":"Cookies without HttpOnly — XSS can steal them directly.",
+      "1275":"Cookies without SameSite — exposed to CSRF.",
+    };
+
+    // ── Utility ─────────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s || "")
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+    }
+
+    function cweLink(cweArr) {
+      if (!cweArr || !cweArr.length) return null;
+      const val = Array.isArray(cweArr) ? cweArr[0] : cweArr;
+      const m = /CWE-(\d+)/i.exec(val);
+      if (!m) return null;
+      return { id: `CWE-${m[1]}`, num: m[1], url: `https://cwe.mitre.org/data/definitions/${m[1]}.html` };
+    }
+
+    function shortPath(fullPath) {
+      if (!fullPath) return "unknown";
+>>>>>>> Stashed changes
       const marker = "repositories";
       const idx = fullPath.indexOf(marker);
       if (idx === -1) return fullPath;
       const after = fullPath.slice(idx + marker.length + 1);
       const parts = after.split(/[\\\/]/);
+<<<<<<< Updated upstream
       parts.shift();
       return parts.join("/");
     }
@@ -394,11 +713,45 @@
       // Fallbacks based on message keywords
       const m = (message || "").toLowerCase();
       if (m.includes("sql injection")) return CWE_IMPACT["89"];
+=======
+      parts.shift(); // drop the uuid folder name
+      return parts.join("/") || fullPath;
+    }
+
+    function shortRuleLabel(ruleId, tool) {
+      if (!ruleId) return "unknown";
+      if (tool === "trivy")    return ruleId; // show CVE-XXXX-XXXX directly
+      if (tool === "gitleaks") return ruleId.replace(/-/g, " ");
+      // Semgrep: take the last segment and humanise
+      const parts = ruleId.split(".");
+      let raw = parts[parts.length - 1] || "";
+      if (parts.length >= 2 && parts[parts.length - 2] === raw) raw = parts[parts.length - 1];
+      return raw
+        .replace(/-detected$/, "").replace(/-found$/, "").replace(/-rule$/, "")
+        .replace(/[-_]/g, " ").trim()
+        .replace(/\beval\b/i, "eval injection")
+        .replace(/\bxss\b/i, "XSS")
+        .replace(/\bsqli\b/i, "SQL injection")
+        .replace(/\bssrf\b/i, "SSRF")
+        .replace(/\bcsrf\b/i, "CSRF") || "unknown";
+    }
+
+    function severityReason(severity, cwe) {
+      if (cwe && CWE_WHY_REASON[cwe.num]) return CWE_WHY_REASON[cwe.num];
+      return SEVERITY_REASONS[severity] || SEVERITY_REASONS.INFO;
+    }
+
+    function impactText(cwe, description) {
+      if (cwe && CWE_IMPACT[cwe.num]) return CWE_IMPACT[cwe.num];
+      const m = (description || "").toLowerCase();
+      if (m.includes("sql injection"))   return CWE_IMPACT["89"];
+>>>>>>> Stashed changes
       if (m.includes("command injection")) return CWE_IMPACT["78"];
       if (m.includes("eval"))            return CWE_IMPACT["95"];
       if (m.includes("xss") || m.includes("cross-site script")) return CWE_IMPACT["79"];
       if (m.includes("hardcoded"))       return CWE_IMPACT["798"];
       if (m.includes("deserial"))        return CWE_IMPACT["502"];
+<<<<<<< Updated upstream
       if (m.includes("path traversal") || m.includes("directory traversal")) return CWE_IMPACT["22"];
       if (m.includes("ssrf"))            return CWE_IMPACT["918"];
       if (m.includes("csrf"))            return CWE_IMPACT["352"];
@@ -423,6 +776,39 @@
       { at: 20, label: "Scanning source code…" },
       { at: 60, label: "Still scanning — large repo, hang tight…" },
       { at: 120, label: "Almost done, parsing findings…" },
+=======
+      if (m.includes("traversal"))       return CWE_IMPACT["22"];
+      if (m.includes("ssrf"))            return CWE_IMPACT["918"];
+      if (m.includes("csrf"))            return CWE_IMPACT["352"];
+      if (m.includes("secret") || m.includes("credential") || m.includes("token") || m.includes("key"))
+        return "Leaked credential gives attackers direct access to your system or third-party services.";
+      return "Could be exploited to compromise security. See linked advisory.";
+    }
+
+    function shortMessage(msg) {
+      if (!msg) return "";
+      const first = msg.split(/(?<=[.!?])\s/)[0] || msg;
+      return first.length <= 160 ? first : first.slice(0, 140).trim() + "…";
+    }
+
+    function cvssClass(score) {
+      if (score >= 9) return "critical";
+      if (score >= 7) return "high";
+      if (score >= 4) return "medium";
+      return "low";
+    }
+
+    // ── Loader ───────────────────────────────────────────────────────────────
+    let timerInterval = null, phaseInterval = null;
+    const PHASES = [
+      { at:  0, label: "Validating repository URL…" },
+      { at:  2, label: "Cloning repository (depth 50)…" },
+      { at:  8, label: "Starting Docker sandbox + scanners…" },
+      { at: 14, label: "Running 10 scanners in parallel (Semgrep, Bandit, ESLint, Gosec, Gitleaks, TruffleHog, Trivy, Safety, SpotBugs, OWASP)…" },
+      { at: 25, label: "Scanning source code and dependencies…" },
+      { at: 60, label: "Still scanning — large repo, hang tight…" },
+      { at: 120, label: "Parsing and normalising findings…" },
+>>>>>>> Stashed changes
     ];
 
     function startLoader() {
@@ -435,6 +821,7 @@
         <div class="loader-meta">
           <span class="phase" id="phase">Validating repository URL…</span>
           <span id="timer">0.0s</span>
+<<<<<<< Updated upstream
         </div>
       `;
 
@@ -452,10 +839,24 @@
         }
         const ph = $("phase");
         if (ph && ph.textContent !== current) ph.textContent = current;
+=======
+        </div>`;
+      timerInterval = setInterval(() => {
+        const t = $("timer");
+        if (t) t.textContent = ((Date.now() - start) / 1000).toFixed(1) + "s";
+      }, 100);
+      phaseInterval = setInterval(() => {
+        const elapsed = (Date.now() - start) / 1000;
+        let cur = PHASES[0].label;
+        for (const p of PHASES) if (elapsed >= p.at) cur = p.label;
+        const ph = $("phase");
+        if (ph && ph.textContent !== cur) ph.textContent = cur;
+>>>>>>> Stashed changes
       }, 500);
     }
 
     function stopLoader() {
+<<<<<<< Updated upstream
       if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
       if (phaseInterval) { clearInterval(phaseInterval); phaseInterval = null; }
     }
@@ -472,11 +873,38 @@
 
       try {
         const res = await fetch("/scan", {
+=======
+      if (timerInterval)  { clearInterval(timerInterval);  timerInterval  = null; }
+      if (phaseInterval)  { clearInterval(phaseInterval);  phaseInterval  = null; }
+    }
+
+    function setStatus(msg, kind) {
+      const el = $("status"); el.className = "status show " + kind; el.textContent = msg;
+    }
+    function clearStatus() { $("status").className = "status"; }
+
+    // ── Scan ─────────────────────────────────────────────────────────────────
+    async function runScan() {
+      const url = $("repoUrl").value.trim();
+      if (!url) { setStatus("Please enter a GitHub URL.", "error"); return; }
+      _repoUrl = url;
+      _scanStart = Date.now();
+      $("scanBtn").disabled = true;
+      $("summary").classList.remove("show");
+      $("scannerTable").classList.remove("show");
+      $("metaBar").classList.remove("show");
+      $("filterBar").classList.remove("show");
+      $("findings").innerHTML = "";
+      startLoader();
+      try {
+        const res  = await fetch("/scan", {
+>>>>>>> Stashed changes
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ repo_url: url }),
         });
         const data = await res.json();
+<<<<<<< Updated upstream
 
         if (!res.ok) {
           stopLoader();
@@ -490,11 +918,18 @@
       } catch (e) {
         stopLoader();
         setStatus("Network error: " + e.message, "error");
+=======
+        if (!res.ok) { stopLoader(); setStatus("Scan failed: " + (data.detail || res.statusText), "error"); return; }
+        stopLoader(); renderResults(data); clearStatus();
+      } catch (e) {
+        stopLoader(); setStatus("Network error: " + e.message, "error");
+>>>>>>> Stashed changes
       } finally {
         $("scanBtn").disabled = false;
       }
     }
 
+<<<<<<< Updated upstream
     const ACTIVE_SCANNERS = [
       { name: "Semgrep", statusLabel: "ACTIVE" },
     ];
@@ -610,10 +1045,335 @@
         const codeLine = r.extra && r.extra.lines ? r.extra.lines : "";
 
         const impact = impactText(cwe, r.extra.message);
+=======
+    // ── GitHub link builder ──────────────────────────────────────────────────
+    let _repoUrl = "";
+    let _scanStart = 0;
+
+    function githubLink(file, line, repoUrl) {
+      if (!repoUrl || !file) return null;
+      const rel = shortPath(file);             // e.g. "NodeGoat/routes/contrib.js"
+      const parts = rel.split("/");
+      parts.shift();                           // drop the cloned-repo-folder segment
+      const filePath = parts.join("/");
+      if (!filePath) return null;
+      const base = repoUrl.replace(/\.git$/, "").replace(/\/$/, "");
+      const anchor = line > 0 ? `#L${line}` : "";
+      return `${base}/blob/main/${filePath}${anchor}`;
+    }
+
+    // ── Filter ───────────────────────────────────────────────────────────────
+    let _allFindings = [];
+    let _activeFilter = "all";
+
+    function setFilter(filter, el) {
+      _activeFilter = filter;
+      document.querySelectorAll(".filter-pill").forEach(p => p.classList.remove("active"));
+      if (el) el.classList.add("active");
+      renderFindingsList(_allFindings);
+    }
+
+    function applyFilter(findings) {
+      if (_activeFilter === "all") return findings;
+      if (["CRITICAL","HIGH","MEDIUM","LOW","INFO"].includes(_activeFilter))
+        return findings.filter(f => f.severity === _activeFilter);
+      return findings.filter(f => f.category === _activeFilter);
+    }
+
+    // ── Scanner table ─────────────────────────────────────────────────────────
+    const SCANNER_META = {
+      semgrep:    { label: "Semgrep",    detects: "SAST — code patterns, taint flow" },
+      gitleaks:   { label: "Gitleaks",   detects: "Secrets — API keys, tokens, credentials" },
+      trivy:      { label: "Trivy",      detects: "CVEs — dependency vulnerabilities" },
+      trufflehog: { label: "TruffleHog", detects: "Secrets — full git history scan" },
+      bandit:     { label: "Bandit",     detects: "Python SAST — eval, injection, hardcoded secrets" },
+      safety:     { label: "Safety",     detects: "Python CVEs — requirements.txt vulnerabilities" },
+      eslint:     { label: "ESLint",     detects: "JS/TS SAST — eval, XSS, unsafe regex" },
+      gosec:      { label: "Gosec",      detects: "Go SAST — SQL injection, weak crypto, file ops" },
+      spotbugs:        { label: "SpotBugs",         detects: "Java bytecode — null deref, SQL injection" },
+      owasp_depcheck:  { label: "OWASP Dep-Check",  detects: "Java CVEs — NVD database (Maven/Gradle)" },
+    };
+
+    function renderScannerTable(findings, scannerSummary, scannerStatus) {
+      // Seed all 3 scanners at 0 from the API's scanner_summary
+      // so tools with 0 findings still appear in the table
+      const knownTools = ["semgrep", "gitleaks", "trivy", "trufflehog", "bandit", "safety", "eslint", "gosec", "spotbugs", "owasp_depcheck"];
+      const stats = {};
+      knownTools.forEach(t => { stats[t] = { total: 0, c: 0, h: 0, m: 0, l: 0 }; });
+
+      // If backend returned scanner_summary, use it to set totals
+      if (scannerSummary) {
+        Object.keys(scannerSummary).forEach(t => {
+          if (!stats[t]) stats[t] = { total: 0, c: 0, h: 0, m: 0, l: 0 };
+          stats[t].total = scannerSummary[t];
+        });
+      }
+
+      // Build per-severity breakdown from findings
+      findings.forEach(f => {
+        const t = f.tool || "semgrep";
+        if (!stats[t]) stats[t] = { total: 0, c: 0, h: 0, m: 0, l: 0 };
+        const s = f.severity;
+        if (s === "CRITICAL") stats[t].c++;
+        else if (s === "HIGH") stats[t].h++;
+        else if (s === "MEDIUM") stats[t].m++;
+        else stats[t].l++;
+      });
+
+      const rows = knownTools.map(tool => {
+        const s      = stats[tool] || { total: 0, c: 0, h: 0, m: 0, l: 0 };
+        const sm     = SCANNER_META[tool] || { label: tool, detects: "—" };
+        const status = (scannerStatus && scannerStatus[tool]) || "ok";
+        const skipped = status === "skipped";
+
+        const notApplicable = status === "not_applicable";
+        const statusBadge = skipped
+          ? `<span class="scanner-status skipped">SKIPPED</span>`
+          : notApplicable
+            ? `<span class="scanner-status not_applicable">N/A</span>`
+            : `<span class="scanner-status active">ACTIVE</span>`;
+
+        const sevCell = (skipped || notApplicable)
+          ? `<span class="muted">—</span>`
+          : s.total > 0
+            ? `<span class="sev-pill c">${s.c}</span>
+               <span class="sev-pill h">${s.h}</span>
+               <span class="sev-pill m">${s.m}</span>
+               <span class="sev-pill l">${s.l}</span>`
+            : `<span class="muted">0</span>`;
+
+        const countCell = notApplicable
+          ? `<span class="muted" title="No ${sm.label}-compatible files detected">—</span>`
+          : skipped
+            ? `<span class="muted" title="Scanner did not run">—</span>`
+            : s.total;
+
+        return `<tr>
+          <td class="scanner-name">${sm.label}</td>
+          <td>${statusBadge}</td>
+          <td>${countCell}</td>
+          <td>${sevCell}</td>
+          <td class="muted">${escapeHtml(sm.detects)}</td>
+        </tr>`;
+      }).join("");
+
+      $("scannerTableBody").innerHTML = rows;
+      $("scannerTable").classList.add("show");
+    }
+
+    // ── Finding card builders ─────────────────────────────────────────────────
+
+    function buildSastCard(f, cwe, sev) {
+      const impact   = impactText(cwe, f.description);
+      const reason   = severityReason(sev, cwe);
+      const metaLine = [
+        f.metadata.impact     ? "Impact: "     + f.metadata.impact     : "",
+        f.metadata.likelihood ? "Likelihood: " + f.metadata.likelihood : "",
+        f.metadata.confidence ? "Confidence: " + f.metadata.confidence : "",
+      ].filter(Boolean).join("  ·  ");
+      const owasp = f.metadata.owasp
+        ? (Array.isArray(f.metadata.owasp) ? f.metadata.owasp[0] : f.metadata.owasp) : "";
+
+      return `
+        <div class="finding-section">
+          <div class="finding-section-label">What's wrong</div>
+          <div class="finding-message">${escapeHtml(shortMessage(f.description))}</div>
+        </div>
+        <div class="finding-section">
+          <div class="finding-section-label">Why it matters</div>
+          <div class="finding-impact">${escapeHtml(impact)}</div>
+        </div>
+        <div class="finding-section">
+          <div class="finding-section-label">Why ${sev}?</div>
+          <div class="finding-severity-reason">${escapeHtml(reason)}</div>
+          ${metaLine ? `<div class="finding-severity-meta">${escapeHtml(metaLine)}</div>` : ""}
+        </div>
+        <div class="finding-meta">
+          ${cwe ? `<a href="${cwe.url}" target="_blank" rel="noopener">${cwe.id}</a>` : ""}
+          ${f.metadata.shortlink ? `<a href="${escapeHtml(f.metadata.shortlink)}" target="_blank" rel="noopener">Semgrep rule</a>` : ""}
+          ${owasp ? `<a href="https://owasp.org/Top10/" target="_blank" rel="noopener">OWASP: ${escapeHtml(owasp)}</a>` : ""}
+        </div>
+        ${f.snippet ? `
+        <div class="finding-section">
+          <div class="finding-section-label">Vulnerable code</div>
+          <div class="finding-code">${escapeHtml(f.snippet)}</div>
+        </div>` : ""}`;
+    }
+
+    // ── Custom per-rule reason for Gitleaks findings ─────────────────────────
+    const GITLEAKS_RULE_REASONS = {
+      "aws-access-token":      "Live AWS access key — attacker gets full API access to your cloud infrastructure.",
+      "aws-access-key-id":     "AWS access key ID — pair with the secret to get full cloud access.",
+      "private-key":           "RSA/EC private key committed — attacker can impersonate your server or decrypt TLS traffic.",
+      "rsa-private-key":       "RSA private key — use this to sign, decrypt, or impersonate services.",
+      "ssh-dsa-private-key":   "DSA private key — authenticates as you to any server that trusts this key.",
+      "ssh-ec-private-key":    "EC private key — authentication and decryption risk if this key is in active use.",
+      "github-pat":            "GitHub personal access token — attacker can read/write any repo the token has access to.",
+      "github-token":          "GitHub token — grants repository access. Rotate in GitHub Settings immediately.",
+      "stripe-api-key":        "Stripe API key — attacker can initiate charges, view customer data, or issue refunds.",
+      "stripe-secret-key":     "Stripe secret key — full access to your Stripe account. Rotate immediately.",
+      "google-api-key":        "Google API key — may grant access to Maps, Drive, Gmail, or other Google services.",
+      "slack-webhook":         "Slack webhook URL — attacker can post messages as your app to any channel.",
+      "slack-token":           "Slack API token — read messages, post as users, access workspace data.",
+      "sendgrid-api-key":      "SendGrid key — attacker can send email as your domain, damaging deliverability and trust.",
+      "mailchimp-api-key":     "Mailchimp key — full access to your mailing lists and campaigns.",
+      "twilio-api-key":        "Twilio key — attacker can make calls and send SMS billed to your account.",
+      "jwt":                   "JWT secret committed — attacker can forge valid authentication tokens for any user.",
+      "npm-access-token":      "npm token — attacker can publish malicious packages under your account.",
+      "pypi-upload-token":     "PyPI token — attacker can publish packages to your PyPI account.",
+      "heroku-api-key":        "Heroku API key — attacker can deploy, scale, or destroy your Heroku apps.",
+      "generic-api-key":       "API key in source — anyone who reads this repo has authenticated access.",
+      "generic-secret":        "Secret value committed — treat as compromised and rotate.",
+      "password-in-url":       "Password embedded in a URL — logged by proxies, browsers, and servers. Rotate immediately.",
+      "basic-auth":            "Basic auth credentials in code — anyone with repo access is authenticated.",
+    };
+
+    function gitleaksReason(ruleId) {
+      if (!ruleId) return "Credential committed to source — rotate immediately.";
+      const id = ruleId.toLowerCase();
+      if (GITLEAKS_RULE_REASONS[id]) return GITLEAKS_RULE_REASONS[id];
+      if (id.includes("aws"))                           return "AWS credential — attacker gets cloud infrastructure access.";
+      if (id.includes("github"))                        return "GitHub token — attacker can access your repositories.";
+      if (id.includes("private") || id.includes("rsa") || id.includes("ssh"))
+                                                        return "Private key committed — attacker can impersonate or decrypt traffic.";
+      if (id.includes("stripe") || id.includes("payment"))
+                                                        return "Payment API key — financial data and transactions at risk.";
+      if (id.includes("slack") || id.includes("discord") || id.includes("webhook"))
+                                                        return "Messaging webhook — attacker can send messages as your app.";
+      if (id.includes("jwt") || id.includes("token"))  return "Auth token committed — attacker can forge or hijack sessions.";
+      if (id.includes("password") || id.includes("passwd"))
+                                                        return "Password committed to source — rotate on all systems where this is used.";
+      return "Credential committed to source — treat as compromised and rotate immediately.";
+    }
+
+    // ── Custom per-CVE reason for Trivy findings ──────────────────────────────
+    function trivyReason(f) {
+      const desc = (f.description || "").toLowerCase();
+      const cvss = f.cvss_score;
+      const pkg  = (f.metadata && f.metadata.pkg_name) || "this package";
+      const fix  = (f.metadata && f.metadata.fixed_version) || "";
+
+      let reason = "";
+      if (desc.includes("prototype pollution") || desc.includes("prototype"))
+        reason = "Prototype pollution — attacker can corrupt base object properties, leading to logic bypass or RCE.";
+      else if (desc.includes("remote code execution") || desc.includes(" rce"))
+        reason = "Remote code execution confirmed by NVD — attacker can run arbitrary commands via this package.";
+      else if (desc.includes("sql injection"))
+        reason = "SQL injection in a dependency — attacker can read or modify your database via this library.";
+      else if (desc.includes("command injection"))
+        reason = "Command injection in a dependency — attacker can run shell commands via this library.";
+      else if (desc.includes("denial of service") || desc.includes(" dos ") || desc.includes("resource exhaustion"))
+        reason = "Denial of service — crafted input can crash or hang the process, taking down the service.";
+      else if (desc.includes("path traversal") || desc.includes("directory traversal"))
+        reason = "Path traversal — attacker can read files outside the intended directory via this package.";
+      else if (desc.includes("redos") || desc.includes("catastrophic backtracking") || (desc.includes("regex") && desc.includes("denial")))
+        reason = "ReDoS — crafted input causes catastrophic regex backtracking, hanging the process.";
+      else if (desc.includes("cross-site scripting") || desc.includes(" xss"))
+        reason = "XSS in a dependency — attacker can inject scripts via this library's output.";
+      else if (desc.includes("open redirect"))
+        reason = "Open redirect in a dependency — enables phishing from your trusted domain.";
+      else if (desc.includes("deserialization"))
+        reason = "Unsafe deserialization — attacker can achieve RCE by sending crafted serialized data.";
+      else if (desc.includes("authentication") && desc.includes("bypass"))
+        reason = "Authentication bypass — attacker can skip auth checks implemented by this package.";
+      else if (desc.includes("information disclosure") || desc.includes("information leak"))
+        reason = "Information disclosure — sensitive data leaks through this package.";
+      else if (cvss >= 9)  reason = `CVSS ${cvss.toFixed(1)} — critical severity confirmed by NVD. High exploitability and full impact.`;
+      else if (cvss >= 7)  reason = `CVSS ${cvss.toFixed(1)} — high severity confirmed by NVD. Real exploitability risk in ${pkg}.`;
+      else if (cvss >= 4)  reason = `CVSS ${cvss.toFixed(1)} — moderate severity. Exploitable under specific conditions in ${pkg}.`;
+      else if (cvss)       reason = `CVSS ${cvss.toFixed(1)} — low severity. Limited exploitability in ${pkg}.`;
+      else                 reason = `Known vulnerability in ${pkg}. Review the NVD advisory for full impact details.`;
+
+      return fix ? reason + ` Update to ${fix} to remediate.` : reason + " No upstream fix yet — monitor for patch.";
+    }
+
+    function buildSecretsCard(f, sev) {
+      const owasp = "A07:2021 - Identification and Authentication Failures";
+      return `
+        <div class="finding-section">
+          <div class="finding-section-label">What was found</div>
+          <div class="finding-message">${escapeHtml(f.description)}</div>
+        </div>
+        ${f.snippet ? `
+        <div class="finding-section">
+          <div class="finding-section-label">Matched (masked)</div>
+          <div class="finding-code">${escapeHtml(f.snippet)}</div>
+        </div>` : ""}
+        <div class="finding-section">
+          <div class="finding-section-label">Why ${sev}?</div>
+          <div class="finding-severity-reason">${escapeHtml(gitleaksReason(f.rule_id))}</div>
+        </div>
+        <div class="finding-meta">
+          <a href="https://owasp.org/Top10/" target="_blank" rel="noopener">OWASP: ${escapeHtml(owasp)}</a>
+          ${f.metadata && f.metadata.commit ? `<span style="color:#8b95a5;font-size:11px;font-family:monospace">commit: ${escapeHtml(f.metadata.commit.slice(0,8))}</span>` : ""}
+        </div>`;
+    }
+
+    function buildCveCard(f, sev) {
+      const cvss = f.cvss_score != null ? f.cvss_score.toFixed(1) : null;
+      const cvssHtml = cvss ? `<span class="cvss-badge ${cvssClass(f.cvss_score)}">CVSS ${cvss}</span>` : "";
+      const nvdLink = f.cve_id ? `https://nvd.nist.gov/vuln/detail/${f.cve_id}` : "";
+      const fixVer  = (f.metadata && f.metadata.fixed_version) || "";
+      return `
+        <div class="finding-section">
+          <div class="finding-section-label">Affected package</div>
+          <div class="finding-code">${escapeHtml(f.snippet)}</div>
+        </div>
+        <div class="finding-section">
+          <div class="finding-section-label">What's wrong</div>
+          <div class="finding-message">${escapeHtml(shortMessage(f.description))}</div>
+        </div>
+        <div class="finding-section">
+          <div class="finding-section-label">Why ${sev}?</div>
+          <div class="finding-severity-reason">
+            ${escapeHtml(trivyReason(f))}
+          </div>
+        </div>
+        <div class="finding-meta">
+          ${f.cve_id ? `<a href="${escapeHtml(nvdLink)}" target="_blank" rel="noopener">${escapeHtml(f.cve_id)}</a>` : ""}
+          ${cvssHtml}
+        </div>`;
+    }
+
+    // ── Main render ───────────────────────────────────────────────────────────
+    function renderFindingsList(findings) {
+      const filtered = applyFilter(findings);
+      // Sort: CRITICAL → HIGH → MEDIUM → LOW → INFO, risk_score as tiebreaker
+      filtered.sort((a, b) => {
+        const aRank = SEVERITY_RANK[a.severity] ?? 0;
+        const bRank = SEVERITY_RANK[b.severity] ?? 0;
+        if (bRank !== aRank) return bRank - aRank;
+        return (b.risk_score || 0) - (a.risk_score || 0);
+      });
+      const list = $("findings");
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty">No findings match the current filter.</div>';
+        return;
+      }
+      list.innerHTML = filtered.map(f => {
+        const sev  = f.severity || "INFO";
+        const cwe  = cweLink((f.metadata || {}).cwe);
+        const tool = f.tool || "semgrep";
+        const cat  = f.category || "sast";
+        const risk = f.risk_score || 0;
+        const riskClass = risk >= 70 ? "high" : "";
+        const lineDisplay = f.line > 0 ? ` : line ${f.line}` : "";
+        const ghUrl = githubLink(f.file, f.line, _repoUrl);
+
+        let body = "";
+        if (cat === "cve") {
+          body = buildCveCard(f, sev);
+        } else if (cat === "secrets" || cat === "history") {
+          body = buildSecretsCard(f, sev);
+        } else {
+          body = buildSastCard(f, cwe, sev);
+        }
+>>>>>>> Stashed changes
 
         return `
           <div class="finding ${sev}">
             <div class="finding-header">
+<<<<<<< Updated upstream
               <div class="finding-title">${shortName(r.check_id)}</div>
               <span class="severity-badge ${sev}">${sev}</span>
             </div>
@@ -647,6 +1407,66 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+=======
+              <div class="finding-title">
+                <span class="tool-badge ${tool}">${tool}</span>
+                <span class="cat-badge ${cat}">${cat}</span>
+                ${escapeHtml(shortRuleLabel(f.rule_id, tool))}
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="risk-score ${riskClass}">Risk ${risk}</span>
+                <span class="severity-badge ${sev}">${sev}</span>
+              </div>
+            </div>
+            <div class="finding-path">
+              ${ghUrl
+                ? `<a href="${escapeHtml(ghUrl)}" target="_blank" rel="noopener" style="color:#8b95a5;text-decoration:none;" onmouseover="this.style.color='#60a5fa'" onmouseout="this.style.color='#8b95a5'">${escapeHtml(shortPath(f.file))}${escapeHtml(lineDisplay)} ↗</a>`
+                : `${escapeHtml(shortPath(f.file))}${escapeHtml(lineDisplay)}`
+              }
+            </div>
+            ${body}
+          </div>`;
+      }).join("");
+    }
+
+    function renderResults(data) {
+      // Backend returns unified findings array sorted by risk_score desc
+      _allFindings = data.findings || [];
+      _activeFilter = "all";
+      document.querySelectorAll(".filter-pill").forEach(p => p.classList.remove("active"));
+      const allPill = document.querySelector(".filter-pill");
+      if (allPill) allPill.classList.add("active");
+
+      // Severity counts
+      let crit = 0, high = 0, med = 0, low = 0;
+      _allFindings.forEach(f => {
+        const s = f.severity;
+        if (s === "CRITICAL") crit++;
+        else if (s === "HIGH") high++;
+        else if (s === "MEDIUM") med++;
+        else low++;
+      });
+      $("totalCount").textContent   = _allFindings.length;
+      $("criticalCount").textContent = crit;
+      $("highCount").textContent    = high;
+      $("mediumCount").textContent  = med;
+      $("lowCount").textContent     = low;
+      $("summary").classList.add("show");
+
+      // Metadata bar
+      const repoName = _repoUrl.replace(/\.git$/, "").split("/").slice(-2).join("/");
+      const elapsed  = ((Date.now() - _scanStart) / 1000).toFixed(1) + "s";
+      $("metaRepo").textContent     = repoName;
+      $("metaFindings").textContent = `${_allFindings.length} findings`;
+      $("metaTime").textContent     = elapsed;
+      $("metaBar").classList.add("show");
+
+      renderScannerTable(_allFindings, data.scanner_summary || null, data.scanner_status || null);
+
+      if (_allFindings.length > 0) $("filterBar").classList.add("show");
+
+      renderFindingsList(_allFindings);
+>>>>>>> Stashed changes
     }
   </script>
 </body>
