@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # Python
 backend/venv/
 backend/__pycache__/
@@ -29,3 +30,19 @@ Thumbs.db
 .env
 .env.local
 *.local
+=======
+backend/venv/
+backend/__pycache__/
+temp/repositories/*
+!temp/repositories/.gitkeep
+node_modules/
+smoke-test-results/
+smoke-test-targets/
+*-Charan.py
+*-Charan.gitignore
+*-Charan.txt
+*.docx
+Week3_*.md
+>>>>>>> Stashed changes
+
+scanner-test-targets/

@@ -1,0 +1,10 @@
+title = "ai-code-scanner gitleaks config"
+
+[allowlist]
+description = "Intentional test fixtures — deliberately vulnerable scanner targets and unit test data"
+paths = [
+    # Polyglot repo used to verify all 10 scanners fire — fake credentials only
+    '''scanner-test-targets''',
+    # Unit tests contain AKIAIOSFODNN7EXAMPLE and other example patterns as fixtures
+    '''backend/tests/test_normalizer\.py''',
+]
