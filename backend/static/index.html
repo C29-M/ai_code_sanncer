@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code Scanner</title>
+  <style>
+    :root {
+      --bg: #050508; --surface: #0d0d12; --surface2: #13131a; --border: #1c1c28;
+      --border2: #242433; --text: #e2e4f0; --text2: #7878a0; --text3: #404060;
+      --accent: #7c6aff; --accent2: #00d4ff; --crit: #ff4d6a; --high: #ff8c42; --med: #f5c542; --low: #4d9fff;
+    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .container { max-width: 980px; margin: 0 auto; padding: 48px 24px; }
+    header { text-align: center; margin-bottom: 40px; }
+    h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: 2px; text-transform: uppercase; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .subtitle { color: var(--text3); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+    .scan-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 0 40px rgba(124,106,255,0.04); }
+    .input-row { display: flex; gap: 10px; }
+    .token-row { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+    .token-row input { flex: 1; padding: 9px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; outline: none; font-family: monospace; }
+    .token-row input:focus { border-color: var(--accent); }
+    .token-label { font-size: 12px; color: var(--text3); white-space: nowrap; }
+    .token-help-toggle { font-size: 12px; color: var(--accent); cursor: pointer; white-space: nowrap; user-select: none; }
+    .token-help-toggle:hover { text-decoration: underline; }
+    .token-help { display: none; margin-top: 12px; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; padding: 14px 16px; font-size: 13px; color: var(--text2); line-height: 1.7; }
+    .token-help.show { display: block; }
+    .token-help ol { margin: 8px 0 0 16px; padding: 0; color: var(--text); }
+    .token-help ol li { margin-bottom: 4px; }
+    .token-help a { color: var(--accent); }
+    .token-help code { background: var(--surface2); border-radius: 3px; padding: 1px 6px; font-size: 12px; color: #86efac; }
+    input[type="text"] { flex: 1; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; outline: none; }
+    input[type="text"]:focus { border-color: var(--accent); }
+    button { padding: 10px 22px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.5px; text-transform: uppercase; }
+    button:hover:not(:disabled) { opacity: 0.8; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .status { margin-top: 14px; padding: 12px 14px; border-radius: 6px; font-size: 13px; display: none; }
+    .status.show { display: block; }
+    .status.loading { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+    .status.error { background: #1a0a0a; color: #f87171; border: 1px solid #3a1010; }
+    .progress { height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; margin-top: 10px; position: relative; }
+    .progress-bar { position: absolute; height: 100%; width: 30%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 1px; animation: slide 1.6s ease-in-out infinite; }
+    @keyframes slide { 0% { left: -30%; } 100% { left: 100%; } }
+    .loader-meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; font-family: monospace; color: var(--text3); }
+    .phase { color: var(--text2); }
+    .summary { display: none; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .summary.show { display: flex; }
+    .stat { flex: 1; min-width: 120px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 600; color: var(--text); }
+    .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+    .stat.crit .stat-value { color: var(--crit); }
+    .stat.warn .stat-value { color: var(--high); }
+    .stat.info-s .stat-value { color: var(--low); }
+    .scan-meta-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; margin: 10px 0 16px; font-size: 12px; color: var(--text3); display: none; }
+    .scan-meta-bar span { color: var(--text2); font-weight: 500; }
+    .scan-meta-bar .tag { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 1px 7px; font-size: 11px; color: var(--text3); margin-left: 6px; }
+    .scan-warning { background: #1a1000; border: 1px solid #3a2800; color: #d97706; border-radius: 6px; padding: 8px 12px; margin: 4px 0; font-size: 13px; }
+    #scanWarnings { margin: 8px 0 0; display: none; }
+    .scanner-table-wrap { display: none; margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .scanner-table-wrap.show { display: block; }
+    .scanner-table-title { padding: 12px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); border-bottom: 1px solid var(--border); }
+    .scanner-table { width: 100%; border-collapse: collapse; }
+    .scanner-table th, .scanner-table td { padding: 9px 16px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .scanner-table th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); background: var(--bg); }
+    .scanner-table tr:last-child td { border-bottom: none; }
+    .scanner-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .scanner-status.active { background: #0d2010; color: #4ade80; border: 1px solid #1a3a20; }
+    .scanner-status.skipped { background: #1a1200; color: #d97706; border: 1px solid #2a2000; }
+    .scanner-status.na { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+    .fix-now-section { margin-bottom: 24px; }
+    .fix-now-header { display: flex; align-items: center; justify-content: space-between; background: #180a0a; border: 1px solid #3a1010; border-radius: 8px 8px 0 0; padding: 14px 18px; }
+    .fix-now-title { font-size: 14px; font-weight: 600; color: #f87171; display: flex; align-items: center; gap: 8px; }
+    .fix-now-count { background: #3a1010; color: #f87171; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+    .fix-now-body { background: #120808; border: 1px solid #3a1010; border-top: none; border-radius: 0 0 8px 8px; padding: 4px; display: flex; flex-direction: column; gap: 2px; }
+    .fix-now-item { background: var(--surface); border-radius: 6px; padding: 12px 14px; display: flex; align-items: flex-start; gap: 12px; }
+    .fix-now-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+    .fix-now-content { flex: 1; }
+    .fix-now-name { font-weight: 600; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+    .fix-now-where { font-size: 11px; color: var(--text3); font-family: monospace; margin-bottom: 4px; }
+    .fix-now-action { font-size: 12px; color: #f87171; }
+    .fix-now-item a { color: var(--accent); text-decoration: none; }
+    .fix-now-item a:hover { text-decoration: underline; }
+    .fix-now-tool { font-size: 10px; font-weight: 600; background: var(--surface2); border: 1px solid var(--border2); color: var(--text3); border-radius: 3px; padding: 1px 5px; text-transform: uppercase; margin-left: 6px; }
+    .export-bar { display: none; justify-content: flex-end; margin-bottom: 12px; }
+    .export-bar.show { display: flex; }
+    .export-btn { background: var(--surface); border: 1px solid var(--border2); color: var(--text2); border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all .15s; }
+    .export-btn:hover { border-color: var(--accent); color: var(--text); }
+    .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+    .filter-btn { background: transparent; border: 1px solid var(--border); color: var(--text3); border-radius: 5px; padding: 4px 12px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; }
+    .filter-btn:hover { border-color: var(--border2); color: var(--text2); }
+    .filter-btn.active { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+    .findings-list { display: flex; flex-direction: column; gap: 10px; }
+    .finding { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border2); border-radius: 8px; overflow: hidden; }
+    .finding.CRITICAL { border-left-color: var(--crit); }
+    .finding.HIGH { border-left-color: var(--high); }
+    .finding.MEDIUM { border-left-color: var(--med); }
+    .finding.LOW, .finding.INFO { border-left-color: var(--low); }
+    .finding-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); }
+    .finding-top-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .risk-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 4px; letter-spacing: 0.2px; white-space: nowrap; }
+    .risk-badge.CRITICAL { background: #1a0808; color: var(--crit); border: 1px solid #3a1010; }
+    .risk-badge.HIGH { background: #1a1000; color: var(--high); border: 1px solid #3a2000; }
+    .risk-badge.MEDIUM { background: #1a1500; color: var(--med); border: 1px solid #3a2a00; }
+    .risk-badge.LOW, .risk-badge.INFO { background: #0a0f1a; color: var(--low); border: 1px solid #1a2a3a; }
+    .risk-score { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600; color: var(--text2); font-family: monospace; }
+    .risk-score .rs-label { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }
+    .tool-badge { font-size: 10px; font-weight: 600; background: var(--surface2); border: 1px solid var(--border); color: var(--text3); border-radius: 3px; padding: 2px 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .confirmed-badge { background: #0d2010; color: #4ade80; border: 1px solid #1a3a20; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+    .finding-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .finding-location { font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; color: var(--text3); }
+    .finding-location a { color: var(--accent); text-decoration: none; }
+    .finding-location a:hover { text-decoration: underline; }
+    .code-block-wrap { padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--border); }
+    .code-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .code-block { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; color: var(--text2); white-space: pre-wrap; word-break: break-all; background: var(--surface); border-radius: 5px; padding: 10px 12px; border: 1px solid var(--border); }
+    .finding-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+    .section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text3); margin-bottom: 5px; }
+    .section-text { font-size: 13px; line-height: 1.6; color: var(--text2); }
+    .impact-box { background: #1a0808; border-left: 2px solid var(--crit); border-radius: 0 5px 5px 0; padding: 10px 14px; font-size: 13px; line-height: 1.6; color: #fca5a5; }
+    .impact-box.HIGH { background: #1a0f00; border-left-color: var(--high); color: #fcd34d; }
+    .impact-box.MEDIUM { background: #1a1400; border-left-color: var(--med); color: #fde68a; }
+    .impact-box.LOW, .impact-box.INFO { background: #0a0f1a; border-left-color: var(--low); color: #93c5fd; }
+    .fix-box { background: #0a1a0f; border-left: 2px solid #22c55e; border-radius: 0 5px 5px 0; padding: 10px 14px; font-size: 13px; line-height: 1.6; color: #86efac; }
+    .fix-code { margin-top: 8px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; color: #86efac; white-space: pre-wrap; word-break: break-all; }
+    .why-box { background: #100a1a; border-left: 2px solid #a855f7; border-radius: 0 5px 5px 0; padding: 10px 14px; font-size: 13px; line-height: 1.6; color: #d8b4fe; }
+    .tech-toggle { font-size: 11px; color: var(--text3); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 0; user-select: none; }
+    .tech-toggle:hover { color: var(--text2); }
+    .tech-details { display: none; margin-top: 8px; flex-wrap: wrap; gap: 6px; }
+    .tech-details.open { display: flex; }
+    .meta-pill { display: inline-block; background: var(--surface2); border: 1px solid var(--border2); color: var(--text2); border-radius: 4px; padding: 3px 8px; font-size: 11px; font-weight: 500; text-decoration: none; }
+    .meta-pill:hover { border-color: var(--accent); color: var(--text); }
+    .meta-pill.cwe { color: #93c5fd; }
+    .meta-pill.owasp { color: #86efac; }
+    .ai-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 10px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 5px; }
+    .ai-bar-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-right: 4px; font-family: monospace; }
+    .ai-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+    .ai-chip-label { color: var(--text3); font-size: 11px; }
+    .ai-chip-val { font-weight: 600; color: var(--text2); }
+    .ai-vuln-type { background: var(--surface2); border: 1px solid var(--border2); color: #a78bfa; border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .conf-bar { width: 80px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; display: inline-block; vertical-align: middle; position: relative; }
+    .conf-fill { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); min-width: 2px; }
+    .cve-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .cve-id { background: #1a0808; color: #f87171; border: 1px solid #3a1010; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600; font-family: monospace; }
+    .cvss-id { background: var(--surface2); color: var(--high); border: 1px solid var(--border2); border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+    .leak-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .leak-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; color: var(--text3); font-size: 11px; }
+    .leak-item strong { color: var(--text2); }
+    .empty { text-align: center; padding: 40px; color: var(--text3); font-size: 14px; }
+    .clean { text-align: center; padding: 40px; }
+    .clean-icon { font-size: 36px; margin-bottom: 12px; }
+    .clean-title { font-size: 18px; font-weight: 600; color: #22c55e; margin-bottom: 6px; }
+    .clean-sub { color: var(--text3); font-size: 13px; }
+    @media print {
+      body { background: #fff !important; color: #111 !important; font-size: 11px; }
+      .scan-card,.filter-tabs,.export-bar,header .subtitle,#status { display: none !important; }
+      header h1 { background: none !important; -webkit-text-fill-color: #111 !important; color: #111 !important; font-size: 22px; }
+      .summary { display: flex !important; gap: 8px; margin-bottom: 12px; }
+      .stat { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 6px; padding: 10px; }
+      .stat-value { font-size: 20px !important; color: #111 !important; }
+      .fix-now-header { background: #fef2f2 !important; border-color: #fca5a5 !important; }
+      .fix-now-title { color: #dc2626 !important; }
+      .fix-now-body { background: #fff !important; border-color: #fca5a5 !important; }
+      .fix-now-item { background: #fef9f9 !important; border: 1px solid #fee2e2; border-radius: 4px; }
+      .fix-now-name { color: #111 !important; }
+      .fix-now-action { color: #dc2626 !important; }
+      .scanner-table-wrap { background: #fff !important; border: 1px solid #e2e8f0 !important; }
+      .scanner-table th { background: #f1f5f9 !important; color: #475569 !important; }
+      .scanner-table td { color: #111 !important; border-color: #e2e8f0 !important; }
+      .finding { background: #fff !important; border: 1px solid #e2e8f0 !important; page-break-inside: avoid; margin-bottom: 8px; border-radius: 6px; }
+      .finding.CRITICAL { border-left: 4px solid #dc2626 !important; }
+      .finding.HIGH { border-left: 4px solid #d97706 !important; }
+      .finding.MEDIUM { border-left: 4px solid #ca8a04 !important; }
+      .finding.LOW,.finding.INFO { border-left: 4px solid #3b82f6 !important; }
+      .finding-head { border-color: #e2e8f0 !important; }
+      .finding-title { color: #111 !important; }
+      .finding-location { color: #475569 !important; }
+      .risk-badge { border: 1px solid #e2e8f0 !important; background: #f8fafc !important; color: #111 !important; }
+      .risk-badge.CRITICAL { background: #fef2f2 !important; color: #dc2626 !important; border-color: #fca5a5 !important; }
+      .risk-badge.HIGH { background: #fffbeb !important; color: #d97706 !important; border-color: #fcd34d !important; }
+      .section-label { color: #475569 !important; }
+      .section-text { color: #111 !important; }
+      .impact-box { background: #fef2f2 !important; border-left-color: #dc2626 !important; color: #7f1d1d !important; }
+      .fix-box { background: #f0fdf4 !important; border-left-color: #16a34a !important; color: #14532d !important; }
+      .fix-code { background: #f8fafc !important; color: #111 !important; border-color: #e2e8f0 !important; }
+      .why-box { background: #faf5ff !important; border-left-color: #9333ea !important; color: #4c1d95 !important; }
+      .code-block-wrap { background: #f8fafc !important; }
+      .code-block { background: #f1f5f9 !important; color: #111 !important; border-color: #e2e8f0 !important; }
+      .tech-toggle,.tech-details { display: none !important; }
+      .scan-meta-bar { background: #f8fafc !important; color: #475569 !important; border-color: #e2e8f0 !important; }
+      .scanner-status.active { background: #dcfce7 !important; color: #15803d !important; }
+      .scanner-status.skipped { background: #fffbeb !important; color: #b45309 !important; }
+      .scanner-status.na { background: #f1f5f9 !important; color: #475569 !important; }
+      @page { margin: 15mm; size: A4; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Code Scanner</h1>
+    <div style="margin-top:16px;background:#141414;border:1px solid #242424;border-radius:8px;padding:16px 20px;text-align:left;max-width:580px;margin-left:auto;margin-right:auto;font-size:13px;color:#666;line-height:1.8">
+      <div style="font-weight:600;color:#e8e8e8;margin-bottom:8px;font-size:13px;">How to use</div>
+      <div>① Paste a GitHub repo URL and click <strong style="color:#e8e8e8">Scan</strong></div>
+      <div>② Public repos — no token needed</div>
+      <div>③ Private repos — paste your GitHub token below</div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #242424;color:#555;font-size:12px">
+        To get a token: <a href="https://github.com/settings/tokens" target="_blank" style="color:#4f7fff">github.com/settings/tokens</a>
+        → Generate new token (classic) → tick <code style="background:#1a1a1a;padding:1px 5px;border-radius:3px;color:#86efac;font-size:11px">repo</code> → copy it
+      </div>
+    </div>
+  </header>
+  <div class="scan-card">
+    <div class="input-row">
+      <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo" value="https://github.com/OWASP/NodeGoat" onkeydown="if(event.key==='Enter')runScan()" />
+      <button id="scanBtn" onclick="runScan()">Scan</button>
+    </div>
+    <div class="token-row">
+      <span class="token-label">🔒 Private repo?</span>
+      <input type="password" id="githubToken" placeholder="Paste your GitHub token here (optional — leave blank for public repos)" />
+      <span class="token-help-toggle" onclick="document.getElementById('tokenHelp').classList.toggle('show')">How to get a token?</span>
+    </div>
+    <div id="tokenHelp" class="token-help">
+      <strong>Getting a GitHub Personal Access Token takes 1 minute:</strong>
+      <ol>
+        <li>Go to <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></li>
+        <li>Click <strong>Generate new token (classic)</strong></li>
+        <li>Give it any name (e.g. <code>ai-code-scanner</code>)</li>
+        <li>Tick the <code>repo</code> checkbox (full repo access)</li>
+        <li>Click <strong>Generate token</strong> at the bottom</li>
+        <li>Copy the token (starts with <code>ghp_</code>) and paste it above</li>
+      </ol>
+      The token is only used to clone your repo and is never stored anywhere.
+    </div>
+    <div id="status" class="status"></div>
+  </div>
+  <div id="summary" class="summary">
+    <div class="stat"><div class="stat-value" id="totalCount">0</div><div class="stat-label">Total Issues</div></div>
+    <div class="stat crit"><div class="stat-value" id="criticalCount">0</div><div class="stat-label">Critical</div></div>
+    <div class="stat warn"><div class="stat-value" id="highCount">0</div><div class="stat-label">High</div></div>
+    <div class="stat warn"><div class="stat-value" id="mediumCount">0</div><div class="stat-label">Medium</div></div>
+    <div class="stat info-s"><div class="stat-value" id="lowCount">0</div><div class="stat-label">Low</div></div>
+  </div>
+  <div id="scanWarnings"></div>
+  <div id="scanMetaBar" class="scan-meta-bar"></div>
+  <div id="scannerTable" class="scanner-table-wrap">
+    <div class="scanner-table-title">Which tools scanned your code</div>
+    <table class="scanner-table">
+      <thead><tr><th>Tool</th><th>Status</th><th>Issues Found</th><th>Severity (C / H / M / L)</th><th>What it checks for</th></tr></thead>
+      <tbody id="scannerTableBody"></tbody>
+    </table>
+  </div>
+  <div id="fixNowSection" class="fix-now-section" style="display:none"></div>
+  <div id="exportBar" class="export-bar">
+    <button class="export-btn" onclick="exportPDF()">⬇ Export PDF Report</button>
+  </div>
+  <div id="filterTabs" class="filter-tabs" style="display:none">
+    <div style="width:100%;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;margin-bottom:2px">Severity / Category</div>
+    <button class="filter-btn active" data-filter="all" data-group="sev">All Issues</button>
+    <button class="filter-btn" data-filter="CRITICAL" data-group="sev">Critical</button>
+    <button class="filter-btn" data-filter="HIGH" data-group="sev">High</button>
+    <button class="filter-btn" data-filter="MEDIUM" data-group="sev">Medium</button>
+    <button class="filter-btn" data-filter="low" data-group="sev">Low</button>
+    <button class="filter-btn" data-filter="sast" data-group="sev">Code Issues</button>
+    <button class="filter-btn" data-filter="secrets" data-group="sev">Leaked Secrets</button>
+    <button class="filter-btn" data-filter="cve" data-group="sev">Vulnerable Libraries</button>
+    <div style="width:100%;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;margin-top:6px;margin-bottom:2px">Language</div>
+    <button class="filter-btn active" data-filter="lang:all" data-group="lang">All</button>
+    <button class="filter-btn" data-filter="lang:python" data-group="lang">Python</button>
+    <button class="filter-btn" data-filter="lang:javascript" data-group="lang">JavaScript</button>
+    <button class="filter-btn" data-filter="lang:go" data-group="lang">Go</button>
+    <button class="filter-btn" data-filter="lang:java" data-group="lang">Java</button>
+  </div>
+  <div id="findings" class="findings-list"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const SEV_LABEL={CRITICAL:"Critical Risk",HIGH:"High Risk",MEDIUM:"Medium Risk",LOW:"Low Risk",INFO:"Low Risk"};
+const ALL_SCANNERS=["semgrep","gitleaks","trivy","trufflehog","bandit","safety","eslint","gosec","spotbugs","owasp_depcheck"];
+const SCANNER_DISPLAY={semgrep:"Semgrep",gitleaks:"Gitleaks",trivy:"Trivy",trufflehog:"TruffleHog",bandit:"Bandit",safety:"Safety",eslint:"ESLint",gosec:"Gosec",spotbugs:"SpotBugs",owasp_depcheck:"OWASP Dep-Check"};
+const SCANNER_WHAT={semgrep:"Reads your code for dangerous patterns (eval, SQL injection, XSS…)",gitleaks:"Looks for passwords, API keys, and tokens left in your files",trivy:"Checks if your npm/pip libraries have known security holes",trufflehog:"Searches your entire git history — finds secrets deleted in old commits",bandit:"Checks Python code for security mistakes",safety:"Checks Python libraries for known vulnerabilities",eslint:"Checks JavaScript/TypeScript code for security mistakes",gosec:"Checks Go code for security mistakes",spotbugs:"Checks compiled Java code for security bugs",owasp_depcheck:"Checks Java libraries against the CVE vulnerability database"};
+
+function findingTitle(r){
+  const id=(r.rule_id||r.check_id||"").toLowerCase(),cat=(r.category||"").toLowerCase(),desc=(r.description||"").toLowerCase();
+  if(cat==="cve"&&r.cve_id)return"Vulnerable library — "+r.cve_id;
+  if(cat==="secrets"||cat==="history"){
+    if(desc.includes("private key")||id.includes("private"))return"Private key found in code";
+    if(desc.includes("api key")||id.includes("api"))return"API key found in code";
+    if(desc.includes("password")||id.includes("pass"))return"Password found in code";
+    if(desc.includes("token")||id.includes("token"))return"Access token found in code";
+    return"Secret credential found in code";
+  }
+  if(id.includes("eval"))return"User input passed to eval() — code injection risk";
+  if(id.includes("sql"))return"SQL injection — database attack possible";
+  if(id.includes("xss")||id.includes("mustache"))return"XSS — attacker can inject scripts into your pages";
+  if(id.includes("csrf"))return"Missing CSRF protection";
+  if(id.includes("hardcoded")||id.includes("hard-coded"))return"Password or key hardcoded in source";
+  if(id.includes("regex")||id.includes("regexp"))return"Unsafe regular expression — can freeze your server";
+  if(id.includes("random")||id.includes("pseudo"))return"Weak random numbers used for security tokens";
+  if(id.includes("path")&&id.includes("trav"))return"Path traversal — attacker can read server files";
+  if(id.includes("redirect"))return"Open redirect — can be used for phishing";
+  if(id.includes("deseri"))return"Unsafe deserialization — can lead to code execution";
+  if(id.includes("ssrf"))return"SSRF — attacker can make your server fetch internal pages";
+  if(id.includes("command")||id.includes("child_process"))return"Command injection — attacker controls server commands";
+  if(id.includes("cookie"))return"Insecure cookie — session can be stolen";
+  if(id.includes("wildcard")||id.includes("cors"))return"Wildcard CORS — any website can access your API";
+  const parts=(r.rule_id||r.check_id||"security issue").split(".");
+  return parts[parts.length-1].replace(/[-_]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+function getCveImpact(desc){
+  const d=(desc||"").toLowerCase();
+  if(d.includes("prototype pollution"))return"An attacker can corrupt your server's core JavaScript objects — disabling security checks, overriding methods, or changing how your entire app behaves.";
+  if(d.includes("code injection")||d.includes("code execution")||d.includes("arbitrary code"))return"An attacker can run their own code on your server — full application takeover.";
+  if(d.includes("denial of service")||d.includes("redos")||d.includes("regular expression"))return"An attacker can send a crafted request that causes your server to freeze or crash, making your app unavailable.";
+  if(d.includes("symlink")||d.includes("arbitrary file"))return"An attacker can read or overwrite files anywhere on your server.";
+  if(d.includes("xss")||d.includes("cross-site script"))return"Attackers can inject scripts into your pages that run in your users' browsers — stealing sessions.";
+  if(d.includes("deserialization"))return"An attacker can craft malicious data that executes code on your server when processed.";
+  if(d.includes("sql injection"))return"An attacker can read, modify, or delete your entire database.";
+  if(d.includes("open redirect"))return"Attackers craft URLs that look like yours but redirect users to malicious pages.";
+  if(d.includes("bypass"))return"A security control can be circumvented, potentially allowing unauthorized access.";
+  return"This library has a documented security flaw. Upgrading to the fixed version eliminates the risk.";
+}
+
+const CWE_IMPACT={"15":"An attacker can load a configuration file or module of their choice, potentially overriding security settings or injecting malicious code.","73":"An attacker can control which file your application opens or executes, potentially reading sensitive files or running malicious code.","20":"Malformed input can cause unexpected behavior — crashes, wrong data being processed, or security checks being bypassed.","400":"An attacker can send a crafted input that causes your server to consume 100% CPU or memory, making the app unavailable for everyone.","1333":"A specially crafted string can make your regex engine backtrack catastrophically — freezing your server for seconds or minutes with a single request.","208":"Attackers can measure response time differences to determine if a secret is valid — like guessing passwords character by character based on how long comparisons take.","94":"An attacker can execute arbitrary code inside your server process — full application takeover.","20":"Unvalidated input reaching sensitive operations can cause crashes, incorrect behavior, or security bypasses.","22":"An attacker can read any file on your server by typing paths like ../../secret.txt.","78":"An attacker can run any command on your server. Full server takeover.","79":"Attackers can inject scripts into your pages. Your users' sessions can be stolen.","89":"An attacker can read, change, or delete your entire database. They can also bypass your login page.","95":"Your server runs code that the attacker typed. By sending crafted input, they can do anything on your server.","200":"Sensitive data leaks to people who shouldn't see it.","209":"Detailed error messages help attackers map your server internals.","259":"A password or key is in your code. Anyone who reads the source has it permanently.","287":"Your login can be bypassed. Attackers can access any account without a password.","311":"Data is sent or stored without encryption. Anyone monitoring can read it.","326":"The encryption used is too weak — modern hardware can crack it.","327":"A broken algorithm (MD5/SHA1/DES) is in use — known to be breakable.","338":"Security tokens or session IDs use predictable random numbers. Attackers can guess them.","352":"Attackers can trick your logged-in users into performing actions without their knowledge.","434":"Attackers can upload malicious files and run them on your server.","502":"Attackers can execute code by sending specially crafted data.","601":"Attackers craft URLs that look like yours but send users to malicious pages.","798":"Credentials are permanently in your source. Once the code is shared, those credentials are compromised forever.","915":"Attackers can set fields they shouldn't by sending crafted form data.","918":"Attackers can make your server fetch internal URLs — admin panels, AWS metadata, internal APIs.","942":"Any website can make requests to your API on behalf of your users.","1004":"Cookies can be read by JavaScript. Any XSS lets attackers steal all sessions.","1275":"Cookies are sent on cross-site requests — users are vulnerable to CSRF."};
+
+function getImpact(cweNum,cat,desc){
+  if(cat==="cve")return getCveImpact(desc);
+  if(cweNum&&CWE_IMPACT[cweNum])return CWE_IMPACT[cweNum];
+  const d=(desc||"").toLowerCase();
+  if(d.includes("sql"))return CWE_IMPACT["89"];if(d.includes("eval"))return CWE_IMPACT["95"];if(d.includes("xss")||d.includes("cross-site"))return CWE_IMPACT["79"];if(d.includes("hardcoded")||d.includes("hard-coded"))return CWE_IMPACT["798"];if(d.includes("path traversal"))return CWE_IMPACT["22"];if(d.includes("csrf"))return CWE_IMPACT["352"];if(d.includes("ssrf"))return CWE_IMPACT["918"];if(d.includes("deserial"))return CWE_IMPACT["502"];if(d.includes("redirect"))return CWE_IMPACT["601"];if(d.includes("wildcard")||d.includes("cors"))return CWE_IMPACT["942"];if(d.includes("private key")||d.includes("api key")||d.includes("password")||d.includes("credential"))return CWE_IMPACT["798"];
+  return"This pattern may allow an attacker to compromise your application or its users.";
+}
+
+const CWE_FIX={"22":{text:"Never build file paths from user input. Use path.basename() and confirm the resolved path stays inside your allowed folder.",code:"// Bad\nfs.readFileSync('./uploads/'+req.params.name);\n// Good\nconst safe=path.resolve('./uploads',path.basename(req.params.name));\nif(!safe.startsWith(path.resolve('./uploads')))throw new Error('Invalid');\nfs.readFileSync(safe);"},"78":{text:"Never pass user input to shell commands. Use spawn() with shell:false.",code:"// Bad\nexec('ping '+userInput);\n// Good\nspawn('ping',[userInput],{shell:false});"},"79":{text:"Always escape user content before inserting it into HTML.",code:"// Bad\nres.send('<p>Hello '+req.query.name+'</p>');\n// Good\nconst name=String(req.query.name).replace(/</g,'&lt;').replace(/>/g,'&gt;');\nres.send('<p>Hello '+name+'</p>');"},"89":{text:"Use parameterized queries — pass user input as a separate argument.",code:"// Bad\ndb.query(\"SELECT * FROM users WHERE name = '\"+req.body.name+\"'\");\n// Good\ndb.query('SELECT * FROM users WHERE name = ?',[req.body.name]);"},"95":{text:"Remove eval() completely. For JSON use JSON.parse().",code:"// Bad\neval(req.body.code);\n// Good\nconst data=JSON.parse(req.body.json);"},"259":{text:"Move all credentials out of your source code and into environment variables.",code:"// Bad\nconst DB_PASS='MySecret';\n// Good\nconst DB_PASS=process.env.DB_PASSWORD;"},"327":{text:"Replace MD5, SHA1, and DES — they are broken. Use bcrypt for passwords.",code:"// Bad\ncrypto.createHash('md5').update(password).digest('hex');\n// Good\nconst bcrypt=require('bcrypt');\nawait bcrypt.hash(password,12);"},"338":{text:"Use a cryptographically secure random generator for tokens and session IDs.",code:"// Bad\nMath.random().toString(36);\n// Good\nrequire('crypto').randomBytes(32).toString('hex');"},"352":{text:"Add CSRF tokens to all forms that change data.",code:"const csrf=require('csurf');\napp.use(csrf());"},"601":{text:"Validate redirect destinations against a whitelist.",code:"// Bad\nres.redirect(req.query.next);\n// Good\nconst allowed=['/dashboard','/home'];\nres.redirect(allowed.includes(req.query.next)?req.query.next:'/');"},"798":{text:"Remove the hardcoded credential NOW and rotate it immediately.",code:"// Bad\nconst API_KEY='sk-abc123';\n// Good\nconst API_KEY=process.env.MY_API_KEY;"},"942":{text:"Replace '*' with your specific allowed domains in the CORS configuration.",code:"// Bad\ncors({origin:'*'})\n// Good\ncors({origin:['https://yourapp.com']})"},"918":{text:"Validate all URLs before fetching. Block requests to localhost and internal IP ranges.",code:"const url=new URL(req.body.url);\nif(['localhost','127.0.0.1'].includes(url.hostname))throw new Error('Blocked');\nawait fetch(url.toString());"},"1004":{text:"Set HttpOnly on all session cookies.",code:"res.cookie('session',token,{httpOnly:true,secure:true,sameSite:'strict'});"}};
+
+function getFix(cweNum,cat,desc){
+  if(cat==="cve")return{text:"Upgrade to the fixed version shown above. Update the version in your package file and run npm install or pip install."};
+  if(cweNum&&CWE_FIX[cweNum])return CWE_FIX[cweNum];
+  const d=(desc||"").toLowerCase();
+  if(d.includes("eval"))return CWE_FIX["95"];if(d.includes("sql"))return CWE_FIX["89"];if(d.includes("xss")||d.includes("cross-site"))return CWE_FIX["79"];if(d.includes("hardcoded")||d.includes("hard-coded"))return CWE_FIX["798"];if(d.includes("csrf"))return CWE_FIX["352"];if(d.includes("redirect"))return CWE_FIX["601"];if(d.includes("wildcard")||d.includes("cors"))return CWE_FIX["942"];if(d.includes("random")||d.includes("pseudo"))return CWE_FIX["338"];if(d.includes("md5")||d.includes("sha1"))return CWE_FIX["327"];if(d.includes("path")&&d.includes("trav"))return CWE_FIX["22"];if(d.includes("command")||d.includes("subprocess"))return CWE_FIX["78"];if(cat==="secrets"||cat==="history")return CWE_FIX["798"];
+  return null;
+}
+
+const CWE_WHY={"95":{CRITICAL:"eval() with user input is Critical because the scanner traced the exact data flow from user input to eval(). The attack is proven — an attacker just sends crafted text to run any code on your server.",HIGH:"eval() with semi-controlled input is High. Even indirect control can lead to code execution.",MEDIUM:"eval() is used but the input source is unclear. Investigate whether user data can reach this."},"89":{CRITICAL:"SQL injection is Critical because the scanner proved user input flows directly into your SQL query. The attacker can read, modify, or delete your entire database.",HIGH:"SQL injection is very likely — user input is close to the SQL query.",MEDIUM:"A potential SQL injection pattern. Confirm whether user input actually reaches this query."},"78":{CRITICAL:"Command injection is Critical because user input reaches a shell command directly. The attacker types their command, your server executes it.",HIGH:"Shell command execution with user-influenced input. If exploitable, full server compromise."},"798":{CRITICAL:"Hardcoded credentials are Critical because they are permanently exposed the moment the code is shared. GitHub bots crawl for secrets within seconds of a push.",HIGH:"A hardcoded credential was found. Even test credentials end up reused in production.",MEDIUM:"A possible credential pattern. Verify if real, then move to environment variables."},"79":{CRITICAL:"XSS is Critical because the scanner proved user input reaches HTML output with no escaping. Attackers can steal sessions from every visitor.",HIGH:"User input likely reaches HTML output without proper escaping.",MEDIUM:"A potential XSS path exists. Whether exploitable depends on surrounding validation."},"942":{HIGH:"Wildcard CORS means any website can make requests to your API on behalf of your logged-in users — reading data, performing actions, or exfiltrating information.",MEDIUM:"CORS policy may be too permissive. Review what origins are allowed."},"352":{HIGH:"Missing CSRF protection means any other website can silently submit your forms on behalf of your logged-in users.",MEDIUM:"Possible missing CSRF protection. Check if this endpoint changes data."},"338":{HIGH:"Predictable random values for session IDs or tokens mean attackers can enumerate and guess valid sessions.",MEDIUM:"Weak randomness in a security context. Confirm if used for anything security-sensitive."},"259":{CRITICAL:"A verified password or API key is hardcoded. The moment this code is on GitHub or shared, that credential is permanently compromised.",HIGH:"A hardcoded credential was detected. Even dev keys end up in production.",MEDIUM:"A possible hardcoded credential. Verify if real, then move out of source code."},"918":{HIGH:"SSRF lets attackers use your server as a proxy to reach internal services — your admin panel, AWS metadata endpoint, or internal APIs.",MEDIUM:"A server-side request is made with a URL that may come from user input."},"502":{CRITICAL:"Unsafe deserialization is Critical — it is a direct path to remote code execution. Attacker sends crafted data, your server deserializes it, their code runs.",HIGH:"Deserialization of potentially untrusted data detected."},"601":{MEDIUM:"Open redirects let attackers craft URLs like yoursite.com/go?to=evil.com — your trusted domain makes the phishing link look legitimate.",LOW:"A possible open redirect. Confirm if the destination URL can be controlled by users."}};
+
+function getWhy(cweNum,sev,cat,desc,cvssScore){
+  if(cat==="cve"){
+    const s=cvssScore!=null?Number(cvssScore).toFixed(1):null;
+    const scoreStr=s?`a CVSS score of ${s}/10`:"a high severity score in the NVD database";
+    if(sev==="CRITICAL"){if(s&&Number(s)>=9.0)return`The NVD rates this ${scoreStr}. Scores of 9.0+ mean the vulnerability is easy to exploit, widely documented, and actively targeted by automated scanners. Patch immediately.`;return`The NVD rates this ${scoreStr}. The scanner classified it Critical based on the vulnerability type — the potential impact is severe enough to treat as urgent.`;}
+    if(sev==="HIGH")return`The NVD rates this ${scoreStr}. High-scoring CVEs are well-documented and patches are available. The fix is usually a one-line version bump in your package file.`;
+    if(sev==="MEDIUM")return`The NVD rates this ${scoreStr}. Whether you are directly affected depends on how you use the library. Upgrade at your next dependency update.`;
+    return`The NVD rates this ${scoreStr}. Low-priority — upgrade when you next refresh your dependencies.`;
+  }
+  if(cat==="secrets"||cat==="history"){
+    const d=(desc||"").toLowerCase();
+    if(d.includes("private key")){if(sev==="CRITICAL")return"A private key in source code is Critical because whoever has the key can impersonate your server, decrypt your traffic, or sign anything as you. The moment this repo was shared or cloned, that key was exposed.";return"A private key was detected. Even if it looks like a test key, private keys must never be in source code.";}
+    if(d.includes("api key")||d.includes("generic api")){if(sev==="CRITICAL")return"An API key in source code is Critical because it gives whoever finds it direct authenticated access to that service — billed to you, acting as you. GitHub crawlers find and abuse exposed keys within minutes of a push.";return"An API key was detected in your code. Move it to an environment variable immediately.";}
+    if(sev==="CRITICAL")return"A verified credential was found in your code. This is Critical because it is directly exploitable — no guessing required. Anyone with code access has it.";
+    return"A possible credential or secret was found. Even if it's a test value, secrets should never live in code.";
+  }
+  if(cweNum&&CWE_WHY[cweNum]&&CWE_WHY[cweNum][sev])return CWE_WHY[cweNum][sev];
+  if(sev==="CRITICAL")return"The scanner traced a clear, unambiguous path from attacker-controlled input to a dangerous operation. This is directly exploitable as written.";
+  if(sev==="HIGH")return"The vulnerability pattern is clearly present. It should be treated as urgent and reviewed immediately.";
+  if(sev==="MEDIUM")return"This pattern is worth investigating. It may or may not be exploitable depending on how your code handles this data.";
+  return"Good practice to fix — does not present an immediate security risk but reduces your attack surface.";
+}
+
+function isFixRightAway(r){
+  const sev=r.severity||"INFO",cat=(r.category||"").toLowerCase(),desc=(r.description||"").toLowerCase(),id=(r.rule_id||r.check_id||"").toLowerCase();
+  if(cat==="secrets"||cat==="history")return true;
+  if(cat==="cve"&&sev==="CRITICAL"&&r.cvss_score!=null&&r.cvss_score>=9.0)return true;
+  if(sev==="CRITICAL"&&(id.includes("eval")||id.includes("sql")||id.includes("command")||id.includes("deseri")||id.includes("code-string-concat")||desc.includes("flows to")||desc.includes("taint")))return true;
+  if(id.includes("wildcard-cors")||desc.includes("wildcard '*'"))return true;
+  return false;
+}
+
+function getFixNowAction(r){
+  const cat=(r.category||"").toLowerCase(),tool=(r.tool||"").toLowerCase(),desc=(r.description||"").toLowerCase(),id=(r.rule_id||r.check_id||"").toLowerCase();
+  if(tool==="trufflehog"&&desc.includes("verified"))return"🚨 ROTATE this credential immediately — it is verified as still active.";
+  if(cat==="secrets"||cat==="history")return"Remove from code and rotate the credential — assume it is already compromised.";
+  if(cat==="cve")return`Upgrade to the fixed version: ${r.snippet||"see the card below"}`;
+  if(id.includes("eval")||desc.includes("eval"))return"Remove eval() — use JSON.parse() for JSON, or a safe math library for expressions.";
+  if(id.includes("wildcard-cors")||desc.includes("wildcard"))return"Replace '*' with your specific allowed domains in the CORS config.";
+  if(id.includes("sql"))return"Use parameterized queries — never build SQL from user input.";
+  if(desc.includes("command")||desc.includes("subprocess"))return"Use spawn() with shell:false and never pass user input to shell commands.";
+  return"Review and fix immediately — this is a proven security vulnerability.";
+}
+
+function renderFixNowSection(findings){
+  const urgent=findings.filter(isFixRightAway);
+  const section=$("fixNowSection");
+  if(!urgent.length){section.style.display="none";return;}
+  const items=urgent.map(r=>{
+    const title=findingTitle(r),filePath=shortPath(r.file||""),lineNum=r.line||0,action=getFixNowAction(r),tool=(r.tool||"").toUpperCase();
+    const isCve=(r.category||"").toLowerCase()==="cve";
+    const locationHtml=r.github_url?`<a href="${r.github_url}" target="_blank" rel="noopener">${escHtml(filePath)}${!isCve&&lineNum>0?`, line ${lineNum}`:""}</a>`:`${escHtml(filePath)}${!isCve&&lineNum>0?`, line ${lineNum}`:""}`;
+    return`<div class="fix-now-item"><div class="fix-now-icon">🔴</div><div class="fix-now-content"><div class="fix-now-name">${escHtml(title)}<span class="fix-now-tool">${escHtml(tool)}</span></div><div class="fix-now-where">${locationHtml}</div><div class="fix-now-action">${escHtml(action)}</div></div></div>`;
+  }).join("");
+  section.style.display="block";
+  section.innerHTML=`<div class="fix-now-header"><div class="fix-now-title">🚨 Fix These Right Away <span class="fix-now-count">${urgent.length} issue${urgent.length!==1?"s":""}</span></div><div style="font-size:12px;color:#fca5a5">Active security risks — requires immediate action</div></div><div class="fix-now-body">${items}</div>`;
+}
+
+function exportPDF(){
+  if(!ALL_FINDINGS.length){alert("Run a scan first before exporting.");return;}
+  const d=_lastScanData||{};
+  const rm=(d.repo_url||"").match(/github\.com\/([^/?#]+\/[^/?#]+)/);
+  const repo=rm?rm[1]:(d.repo_url||"unknown");
+  const scanTime=d.scan_time_s?d.scan_time_s+"s":"—";
+  const today=new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
+  let crit=0,high=0,med=0,low=0;
+  ALL_FINDINGS.forEach(r=>{const s=r.severity||"INFO";if(s==="CRITICAL")crit++;else if(s==="HIGH")high++;else if(s==="MEDIUM")med++;else low++;});
+  const top10=[...ALL_FINDINGS].sort((a,b)=>(b.adjusted_risk_score||b.risk_score||0)-(a.adjusted_risk_score||a.risk_score||0)).slice(0,10);
+  const st=d.scanner_status||{};
+  const scanCounts={};
+  ALL_FINDINGS.forEach(r=>{const t=(r.tool||"semgrep").toLowerCase();scanCounts[t]=(scanCounts[t]||0)+1;});
+  const SEV_COLOR={CRITICAL:"#dc2626",HIGH:"#d97706",MEDIUM:"#ca8a04",LOW:"#3b82f6",INFO:"#3b82f6"};
+  const SEV_BG={CRITICAL:"#fef2f2",HIGH:"#fffbeb",MEDIUM:"#fefce8",LOW:"#eff6ff",INFO:"#eff6ff"};
+  const SEV_BORDER={CRITICAL:"#fca5a5",HIGH:"#fcd34d",MEDIUM:"#fde68a",LOW:"#bfdbfe",INFO:"#bfdbfe"};
+
+  const findingsHtml=top10.map((r,i)=>{
+    const sev=r.severity||"INFO";
+    const title=findingTitle(r);
+    const cat=(r.category||"").toLowerCase();
+    const cweObj=parseCwe(r.cwe);
+    const cweNum=cweObj?cweObj.num:null;
+    const impact=getImpact(cweNum,cat,r.description||"");
+    const fix=getFix(cweNum,cat,r.description||"");
+    const score=(r.adjusted_risk_score||r.risk_score||0).toFixed(1);
+    const tool=(r.tool||"").toUpperCase();
+    const file=shortPath(r.file||"");
+    const line=r.line?`, line ${r.line}`:"";
+    const isCve=cat==="cve";
+    return`<div style="margin-bottom:16px;padding:14px;border:1px solid #e2e8f0;border-radius:6px;border-left:4px solid ${SEV_COLOR[sev]||"#3b82f6"};page-break-inside:avoid;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="background:${SEV_COLOR[sev]||"#3b82f6"};color:#fff;border-radius:3px;padding:2px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${escHtml(sev)}</span>
+          <span style="font-weight:600;font-size:13px;color:#0f172a;">${escHtml(title)}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:8px;">
+          <span style="font-size:10px;color:#475569;background:#f1f5f9;padding:2px 7px;border-radius:3px;font-weight:500;">${escHtml(tool)}</span>
+          <span style="font-size:10px;color:#64748b;">Risk <strong style="color:#111;">${score}</strong></span>
+        </div>
+      </div>
+      ${!isCve&&file?`<div style="font-size:11px;color:#64748b;margin-bottom:8px;font-family:monospace;background:#f8fafc;padding:3px 8px;border-radius:3px;display:inline-block;">${escHtml(file)}${escHtml(line)}</div>`:""}
+      ${isCve&&r.cve_id?`<div style="margin-bottom:8px;"><span style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:3px;padding:2px 8px;font-size:11px;font-weight:600;font-family:monospace;">${escHtml(r.cve_id)}</span></div>`:""}
+      <div style="margin-bottom:10px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:4px;">What this means</div>
+        <div style="font-size:12px;line-height:1.6;color:#374151;">${escHtml(impact)}</div>
+      </div>
+      ${fix?`<div style="font-size:12px;line-height:1.6;background:#f0fdf4;border-left:3px solid #16a34a;padding:8px 12px;border-radius:0 4px 4px 0;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#15803d;margin-bottom:4px;">How to fix</div>
+        <div style="color:#14532d;">${escHtml(fix.text)}</div>
+        ${fix.code?`<pre style="margin-top:6px;font-family:'SFMono-Regular',Consolas,monospace;font-size:10px;background:#fff;border:1px solid #bbf7d0;border-radius:3px;padding:6px 8px;color:#14532d;white-space:pre-wrap;word-break:break-all;">${escHtml(fix.code)}</pre>`:""}
+      </div>`:""}
+    </div>`;
+  }).join("");
+
+  const scannerRowsHtml=ALL_SCANNERS.map(name=>{
+    const s=st[name]||"na";
+    const cnt=scanCounts[name]||0;
+    const ran=s==="active"||s==="completed";
+    const statusLabel=ran?"Ran":s==="skipped"?"Skipped":"—";
+    const statusColor=ran?"#15803d":s==="skipped"?"#b45309":"#64748b";
+    const statusBg=ran?"#dcfce7":s==="skipped"?"#fffbeb":"#f1f5f9";
+    return`<tr><td style="padding:6px 10px;font-weight:500;color:#0f172a;">${SCANNER_DISPLAY[name]||name}</td><td style="padding:6px 10px;"><span style="background:${statusBg};color:${statusColor};padding:2px 7px;border-radius:3px;font-size:10px;font-weight:600;">${statusLabel}</span></td><td style="padding:6px 10px;text-align:center;font-weight:600;color:${cnt>0?"#0f172a":"#94a3b8"};">${cnt||"—"}</td><td style="padding:6px 10px;font-size:11px;color:#64748b;">${SCANNER_WHAT[name]||""}</td></tr>`;
+  }).join("");
+
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Security Report — ${escHtml(repo)}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:#111;background:#fff;padding:28px 36px;}h2{font-size:14px;font-weight:700;color:#0f172a;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.5px;}table{width:100%;border-collapse:collapse;}th{background:#f1f5f9;color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:7px 10px;text-align:left;border-bottom:1px solid #e2e8f0;}td{border-bottom:1px solid #f1f5f9;}@page{margin:15mm;size:A4;}@media print{body{padding:0;}}</style>
+</head><body>
+<div style="border-bottom:3px solid #0f172a;padding-bottom:16px;margin-bottom:24px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+      <div style="font-size:20px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">Security Report</div>
+      <div style="color:#64748b;margin-top:4px;font-size:13px;font-family:monospace;">${escHtml(repo)}</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:#64748b;line-height:1.6;">
+      <div>${today}</div>
+      <div>Scan time: <strong>${scanTime}</strong></div>
+      <div>Scanners: 10 tools</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:28px;">
+  <h2>Scan Summary</h2>
+  <div style="display:flex;gap:10px;margin-bottom:16px;">
+    <div style="flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;text-align:center;"><div style="font-size:26px;font-weight:800;color:#0f172a;">${ALL_FINDINGS.length}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Total</div></div>
+    <div style="flex:1;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:12px;text-align:center;"><div style="font-size:26px;font-weight:800;color:#dc2626;">${crit}</div><div style="font-size:10px;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Critical</div></div>
+    <div style="flex:1;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:12px;text-align:center;"><div style="font-size:26px;font-weight:800;color:#d97706;">${high}</div><div style="font-size:10px;color:#d97706;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">High</div></div>
+    <div style="flex:1;background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:12px;text-align:center;"><div style="font-size:26px;font-weight:800;color:#ca8a04;">${med}</div><div style="font-size:10px;color:#ca8a04;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Medium</div></div>
+    <div style="flex:1;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:12px;text-align:center;"><div style="font-size:26px;font-weight:800;color:#3b82f6;">${low}</div><div style="font-size:10px;color:#3b82f6;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Low</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Tool</th><th>Status</th><th style="text-align:center;">Issues</th><th>What it checks</th></tr></thead>
+    <tbody>${scannerRowsHtml}</tbody>
+  </table>
+</div>
+
+<div>
+  <h2>Top 10 Findings — by Risk Score</h2>
+  <div style="font-size:11px;color:#64748b;margin-bottom:14px;">Highest-priority issue${top10.length!==1?"s":""} from this scan, ranked by adjusted risk score.</div>
+  ${findingsHtml}
+  ${ALL_FINDINGS.length>10?`<div style="text-align:center;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#64748b;font-size:12px;margin-top:4px;">+ ${ALL_FINDINGS.length-10} additional issue${ALL_FINDINGS.length-10!==1?"s":""} — view in the scanner UI</div>`:""}
+</div>
+
+<div style="margin-top:28px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;display:flex;justify-content:space-between;">
+  <span>Generated by Code Scanner</span><span>${escHtml(repo)} · ${today}</span>
+</div>
+<script>window.onload=function(){window.print();};<\/script>
+</body></html>`;
+
+  const pw=window.open("","_blank","width=980,height=820");
+  if(!pw){alert("Pop-up blocked — allow pop-ups for localhost and try again.");return;}
+  pw.document.write(html);
+  pw.document.close();
+}
+
+function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
+function parseCwe(cwe){const val=Array.isArray(cwe)?cwe[0]:(cwe||"");const m=/CWE-(\d+)/.exec(val);return m?{num:m[1],id:"CWE-"+m[1],url:"https://cwe.mitre.org/data/definitions/"+m[1]+".html"}:null;}
+function shortPath(full){if(!full)return"unknown";const s=full.replace(/\\/g,"/");const idx=s.indexOf("repositories/");if(idx!==-1){const p=s.slice(idx+"repositories/".length).split("/");p.shift();return p.join("/");}return s.split("/").slice(-3).join("/");}
+
+let _timers=[];
+const PHASES=[{at:0,label:"Checking the repository URL…"},{at:2,label:"Cloning the repository…"},{at:8,label:"Starting the security sandbox…"},{at:14,label:"Loading security rules…"},{at:20,label:"Scanning your code…"},{at:60,label:"Still scanning — large repo, almost done…"},{at:120,label:"Finishing up, collecting results…"}];
+function startLoader(){
+  const start=Date.now(),el=$("status");
+  el.className="status show loading";
+  el.innerHTML=`<div class="progress"><div class="progress-bar"></div></div><div class="loader-meta"><span class="phase" id="phase">Checking the repository URL…</span><span id="timer">0.0s</span></div>`;
+  _timers.push(setInterval(()=>{const t=$("timer");if(t)t.textContent=((Date.now()-start)/1000).toFixed(1)+"s";},100));
+  _timers.push(setInterval(()=>{const e=(Date.now()-start)/1000;let cur=PHASES[0].label;for(const p of PHASES)if(e>=p.at)cur=p.label;const ph=$("phase");if(ph&&ph.textContent!==cur)ph.textContent=cur;},500));
+}
+function stopLoader(){_timers.forEach(clearInterval);_timers=[];}
+
+async function runScan(){
+  const url=$("repoUrl").value.trim();
+  if(!url){setStatus("Please enter a GitHub URL.","error");return;}
+  $("scanBtn").disabled=true;
+  $("summary").classList.remove("show");$("scannerTable").classList.remove("show");$("findings").innerHTML="";
+  const ft=$("filterTabs");if(ft)ft.style.display="none";
+  const mb=$("scanMetaBar");if(mb)mb.style.display="none";
+  const sw=$("scanWarnings");if(sw)sw.style.display="none";
+  const fn=$("fixNowSection");if(fn)fn.style.display="none";
+  const eb=$("exportBar");if(eb)eb.classList.remove("show");
+  startLoader();
+  try{
+    const token=$("githubToken").value.trim();
+    const payload={repo_url:url};if(token)payload.github_token=token;
+    const res=await fetch("/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    const data=await res.json();stopLoader();
+    if(!res.ok){setStatus("Scan failed: "+(data.detail||res.statusText),"error");return;}
+    renderResults(data);$("status").className="status";
+  }catch(e){stopLoader();setStatus("Network error: "+e.message,"error");}
+  finally{$("scanBtn").disabled=false;}
+}
+function setStatus(msg,kind){const el=$("status");el.className="status show "+kind;el.textContent=msg;}
+
+function renderScannerTable(findings,status){
+  const counts={};
+  findings.forEach(r=>{const t=(r.tool||"semgrep").toLowerCase(),s=r.severity||"INFO";if(!counts[t])counts[t]={total:0,c:0,h:0,m:0,l:0};counts[t].total++;if(s==="CRITICAL")counts[t].c++;else if(s==="HIGH")counts[t].h++;else if(s==="MEDIUM")counts[t].m++;else counts[t].l++;});
+  $("scannerTableBody").innerHTML=ALL_SCANNERS.map(name=>{
+    const st=status[name]||"na",cls=st==="active"?"active":st==="skipped"?"skipped":"na",lbl=st==="active"?"✅ Ran":st==="skipped"?"⚠️ Skipped":"— N/A";
+    const c=counts[name]||{total:0,c:0,h:0,m:0,l:0};
+    const sevPills=st==="active"?`<span style="background:#450a0a;color:#fca5a5;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">${c.c}</span> <span style="background:#431407;color:#fdba74;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">${c.h}</span> <span style="background:#422006;color:#fde68a;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">${c.m}</span> <span style="background:#172554;color:#93c5fd;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700">${c.l}</span>`:"—";
+    return`<tr><td style="font-weight:600;color:#e6e6e6">${SCANNER_DISPLAY[name]||name}</td><td><span class="scanner-status ${cls}" style="font-size:11px">${lbl}</span></td><td>${st==="active"?(c.total?c.total+" issues":"✅ Clean"):"—"}</td><td>${sevPills}</td><td style="color:#64748b;font-size:12px">${SCANNER_WHAT[name]||""}</td></tr>`;
+  }).join("");
+  $("scannerTable").classList.add("show");
+}
+
+function dedupeFindings(findings){
+  const seen=new Map(),RANK={CRITICAL:4,HIGH:3,MEDIUM:2,LOW:1,INFO:0};
+  findings.forEach(r=>{const cwe=parseCwe((r.metadata||{}).cwe);const key=`${r.file||""}::${r.line||0}::${cwe?cwe.id:(r.rule_id||r.check_id||"")}`;if(!seen.has(key))seen.set(key,{...r,_confirmed_by:1});else{const ex=seen.get(key);if((RANK[r.severity]||0)>(RANK[ex.severity]||0))seen.set(key,{...r,_confirmed_by:ex._confirmed_by+1});else ex._confirmed_by++;}});
+  return Array.from(seen.values());
+}
+
+function renderCard(r){
+  const sev=r.severity||"INFO",meta=r.metadata||{},cat=(r.category||"sast").toLowerCase();
+  const cwe=parseCwe(meta.cwe),cweNum=cwe?cwe.num:null;
+  const title=findingTitle(r),problem=(r.description||"").split(/\.\s+/)[0].trim()||r.description||"";
+  const impact=getImpact(cweNum,cat,r.description),fix=getFix(cweNum,cat,r.description),why=getWhy(cweNum,sev,cat,r.description,r.cvss_score);
+  const badgeLabel=SEV_LABEL[sev]||sev,snippet=r.snippet||"",filePath=shortPath(r.file||""),lineNum=r.line||0;
+  const isCve=cat==="cve",owaspVal=Array.isArray(meta.owasp)?meta.owasp[0]:(meta.owasp||""),sgLink=meta.shortlink||"";
+  const riskScore=r.risk_score!=null?r.risk_score:"",dupBadge=r._confirmed_by>1?`<span class="confirmed-badge">Confirmed by ${r._confirmed_by} rules</span>`:"";
+  const riskBadge=riskScore!==""?`<span class="risk-score"><span class="rs-label">Risk</span>${riskScore}</span>`:"";
+  const toolBadge=`<span class="tool-badge">${escHtml((r.tool||"scanner").toUpperCase())}</span>`;
+  const showLine=lineNum>0&&!isCve;
+  const locationHtml=isCve?`Library file: <span style="color:#94a3b8">${escHtml(filePath.split("/").pop()||filePath)}</span>`:(r.github_url?`Found in: <a href="${r.github_url}" target="_blank" rel="noopener">${escHtml(filePath)}</a>${showLine?`, line ${lineNum}`:""}`:`Found in: ${escHtml(filePath)}${showLine?`, line ${lineNum}`:""}`);
+  const codeLabel=isCve?"📦 Installed version — upgrade to:":`📋 The problematic code${showLine?` (line ${lineNum})`:""}:`;
+  const codeHtml=snippet?`<div class="code-block-wrap"><div class="code-label">${codeLabel}</div><div class="code-block">${escHtml(snippet)}</div></div>`:"";
+  const cveHtml=r.cve_id?`<div class="cve-row"><span class="cve-id">${escHtml(r.cve_id)}</span>${r.cvss_score!=null?`<span class="cvss-id">CVSS ${Number(r.cvss_score).toFixed(1)} / 10</span>`:""}</div>`:"";
+  const conf=r.classifier_confidence>0?r.classifier_confidence:null;
+  const sim=r.semantic_similarity>0?r.semantic_similarity:null;
+  const vtype=r.vuln_type&&r.vuln_type!=="other"?r.vuln_type:null;
+  const aiBar=(conf||sim||vtype)?`<div class="ai-bar"><span class="ai-bar-label">AI Classifier</span>${vtype?`<span class="ai-vuln-type">${escHtml(vtype)}</span>`:""}<span class="ai-chip"><span class="ai-chip-label">Confidence</span><span class="conf-bar"><span class="conf-fill" style="width:${Math.round((conf||0)*100)}%"></span></span><span class="ai-chip-val">${conf?Math.round(conf*100)+"%":"—"}</span></span><span class="ai-chip"><span class="ai-chip-label">Code similarity</span><span class="conf-bar"><span class="conf-fill" style="width:${Math.round((sim||0)*100)}%"></span></span><span class="ai-chip-val">${sim?Math.round(sim*100)+"%":"—"}</span></span></div>`:"";
+  const leakHtml=(r.tool==="gitleaks"||r.tool==="trufflehog")?(()=>{const m=r.metadata||{},parts=[];if(m.author)parts.push(`<span class="leak-item"><strong>Added by:</strong> ${escHtml(m.author)}</span>`);if(m.date)parts.push(`<span class="leak-item"><strong>On:</strong> ${escHtml(m.date.slice(0,10))}</span>`);if(m.commit)parts.push(`<span class="leak-item"><strong>Commit:</strong> ${escHtml(m.commit.slice(0,8))}</span>`);return parts.length?`<div class="leak-meta">${parts.join("")}</div>`:"";})():"";
+  const fixHtml=fix?`<div><div class="section-label">✅ How to fix this</div><div class="fix-box">${escHtml(fix.text)}${fix.code?`<pre class="fix-code">${escHtml(fix.code)}</pre>`:""}</div></div>`:"";
+  const pills=[cwe?`<a href="${cwe.url}" class="meta-pill cwe" target="_blank" rel="noopener">${cwe.id} — technical reference</a>`:"",sgLink?`<a href="${sgLink}" class="meta-pill" target="_blank" rel="noopener">View detection rule</a>`:"",owaspVal?`<a href="https://owasp.org/Top10/" class="meta-pill owasp" target="_blank" rel="noopener">OWASP: ${escHtml(owaspVal)}</a>`:"",r.github_url?`<a href="${r.github_url}" class="meta-pill" target="_blank" rel="noopener">Open in GitHub ↗</a>`:""].filter(Boolean).join("");
+  const techHtml=pills?`<div><span class="tech-toggle" onclick="this.nextElementSibling.classList.toggle('open')">🔧 Technical references ▾</span><div class="tech-details">${pills}</div></div>`:"";
+  return`<div class="finding ${sev}" data-sev="${sev}" data-cat="${cat}">
+    <div class="finding-head">
+      <div class="finding-top-row"><span class="risk-badge ${sev}">${badgeLabel}</span>${riskBadge}${toolBadge}${dupBadge}</div>
+      <div class="finding-title">${escHtml(title)}</div>
+      <div class="finding-location">${locationHtml}</div>
+      ${cveHtml}${leakHtml}${aiBar}
+    </div>
+    ${codeHtml}
+    <div class="finding-body">
+      <div><div class="section-label">❗ What's the problem</div><div class="section-text">${escHtml(problem)}</div></div>
+      <div><div class="section-label">⚠️ What could happen if this isn't fixed</div><div class="impact-box ${sev}">${escHtml(impact)}</div></div>
+      ${fixHtml}
+      <div><div class="section-label">💡 Why is this rated "${badgeLabel}"?</div><div class="why-box">${escHtml(why)}</div></div>
+      ${techHtml}
+    </div>
+  </div>`;
+}
+
+let ALL_FINDINGS=[];
+let _lastScanData=null;
+let _activeSev="all", _activeLang="lang:all";
+
+function applyFilter(filter){
+  const isLang=filter.startsWith("lang:");
+  if(isLang) _activeLang=filter; else _activeSev=filter;
+
+  // highlight correct button in each group
+  document.querySelectorAll(".filter-btn").forEach(b=>{
+    if(b.dataset.group==="lang") b.classList.toggle("active", b.dataset.filter===_activeLang);
+    else b.classList.toggle("active", b.dataset.filter===_activeSev);
+  });
+
+  let shown=ALL_FINDINGS;
+
+  // severity / category filter
+  const sf=_activeSev.toLowerCase();
+  if(sf!=="all"){
+    if(["critical","high","medium"].includes(sf)) shown=shown.filter(r=>(r.severity||"").toLowerCase()===sf);
+    else if(sf==="low") shown=shown.filter(r=>["low","info"].includes((r.severity||"").toLowerCase()));
+    else shown=shown.filter(r=>(r.category||"").toLowerCase()===sf);
+  }
+
+  // language filter
+  const lf=_activeLang.replace("lang:","");
+  if(lf!=="all"){
+    const LANG_TOOLS={python:["bandit","safety"],javascript:["eslint"],go:["gosec"],java:["spotbugs","owasp_depcheck"]};
+    const tools=LANG_TOOLS[lf]||[];
+    shown=shown.filter(r=>{
+      const lang=(r.language||"").toLowerCase();
+      const tool=(r.tool||"").toLowerCase();
+      return lang===lf||lang.includes(lf)||tools.includes(tool);
+    });
+  }
+
+  $("findings").innerHTML=shown.length===0?'<div class="empty">No issues match this filter.</div>':shown.map(renderCard).join("");
+}
+
+function renderResults(data){
+  _lastScanData=data;
+  const raw=Array.isArray(data.findings)?data.findings:[];
+  const RANK={CRITICAL:4,HIGH:3,MEDIUM:2,LOW:1,INFO:0};
+  raw.sort((a,b)=>(RANK[b.severity]||0)-(RANK[a.severity]||0));
+  ALL_FINDINGS=dedupeFindings(raw);
+  let crit=0,high=0,med=0,low=0;
+  ALL_FINDINGS.forEach(r=>{const s=r.severity||"INFO";if(s==="CRITICAL")crit++;else if(s==="HIGH")high++;else if(s==="MEDIUM")med++;else low++;});
+  $("totalCount").textContent=ALL_FINDINGS.length;$("criticalCount").textContent=crit;$("highCount").textContent=high;$("mediumCount").textContent=med;$("lowCount").textContent=low;
+  $("summary").classList.add("show");
+  const wb=$("scanWarnings");if(wb){const w=data.warnings||[];wb.innerHTML=w.map(x=>`<div class="scan-warning">⚠️ ${escHtml(x)}</div>`).join("");wb.style.display=w.length?"block":"none";}
+  const mb=$("scanMetaBar");if(mb){const m=(data.repo_url||"").match(/github\.com\/([^/?#]+\/[^/?#]+)/);const rn=m?m[1]:(data.repo_url||"");const t=data.scan_time_s?data.scan_time_s+"s":"";mb.innerHTML=`Scanned: <span>${escHtml(rn)}</span> &nbsp;·&nbsp; ${ALL_FINDINGS.length} issue${ALL_FINDINGS.length!==1?"s":""} found${t?` &nbsp;·&nbsp; ${t}`:""} <span class="tag">Docker sandbox</span>`;mb.style.display="block";}
+  renderScannerTable(ALL_FINDINGS,data.scanner_status||{});
+  renderFixNowSection(ALL_FINDINGS);
+  const eb=$("exportBar");if(eb)eb.classList.add("show");
+  _activeSev="all";_activeLang="lang:all";
+  const ft=$("filterTabs");if(ft){ft.style.display="flex";ft.querySelectorAll(".filter-btn").forEach(b=>b.addEventListener("click",()=>applyFilter(b.dataset.filter)));}
+  if(ALL_FINDINGS.length===0){$("findings").innerHTML=`<div class="clean"><div class="clean-icon">✅</div><div class="clean-title">No security issues found!</div><div class="clean-sub">All scanners ran and found nothing. Great result.</div></div>`;}
+  else applyFilter("all");
+}
+</script>
+</body>
+</html>

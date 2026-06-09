@@ -1,0 +1,121 @@
+{
+  "scanner_url": "http://localhost:8000",
+  "week6_gates_passed": true,
+  "results": [
+    {
+      "name": "DVWA",
+      "url": "https://github.com/digininja/DVWA",
+      "scan_time_s": 80.3,
+      "total_findings": 149,
+      "critical": 70,
+      "high": 49,
+      "medium": 17,
+      "low": 13,
+      "categories_found": [
+        "cve",
+        "history",
+        "sast",
+        "secrets"
+      ],
+      "scanners_with_hits": [
+        "bandit",
+        "eslint",
+        "gitleaks",
+        "semgrep",
+        "trivy"
+      ],
+      "error": null,
+      "known_vulns_hit": [
+        "sql injection",
+        "command injection",
+        "xss",
+        "hardcoded"
+      ],
+      "known_vulns_missed": [],
+      "fp_rate": null,
+      "time_ok": true,
+      "passed": true
+    },
+    {
+      "name": "WebGoat",
+      "url": "https://github.com/WebGoat/WebGoat",
+      "scan_time_s": 304.8,
+      "total_findings": 500,
+      "critical": 81,
+      "high": 389,
+      "medium": 16,
+      "low": 14,
+      "categories_found": [
+        "history",
+        "sast",
+        "secrets"
+      ],
+      "scanners_with_hits": [
+        "eslint",
+        "gitleaks",
+        "semgrep",
+        "trufflehog"
+      ],
+      "error": null,
+      "known_vulns_hit": [
+        "sql",
+        "deserialization"
+      ],
+      "known_vulns_missed": [
+        "cve"
+      ],
+      "fp_rate": null,
+      "time_ok": true,
+      "passed": true
+    },
+    {
+      "name": "Juice Shop",
+      "url": "https://github.com/juice-shop/juice-shop",
+      "scan_time_s": 86.9,
+      "total_findings": 352,
+      "critical": 89,
+      "high": 161,
+      "medium": 2,
+      "low": 100,
+      "categories_found": [
+        "history",
+        "sast",
+        "secrets"
+      ],
+      "scanners_with_hits": [
+        "gitleaks",
+        "semgrep",
+        "trufflehog"
+      ],
+      "error": null,
+      "known_vulns_hit": [
+        "xss",
+        "sql"
+      ],
+      "known_vulns_missed": [
+        "cve"
+      ],
+      "fp_rate": null,
+      "time_ok": true,
+      "passed": true
+    },
+    {
+      "name": "Flask (clean reference)",
+      "url": "https://github.com/pallets/flask",
+      "scan_time_s": 72.8,
+      "total_findings": 500,
+      "critical": 12,
+      "high": 35,
+      "medium": 16,
+      "low": 437,
+      "categories_found": [],
+      "scanners_with_hits": [],
+      "error": null,
+      "known_vulns_hit": [],
+      "known_vulns_missed": [],
+      "fp_rate": 0.094,
+      "time_ok": true,
+      "passed": true
+    }
+  ]
+}

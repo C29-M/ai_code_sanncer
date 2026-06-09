@@ -1,0 +1,58 @@
+flowchart TD
+    USER["👤 USER\nPastes GitHub URL + optional token\nBrowser → http://localhost:8000"]
+
+    BACKEND["⚙️ Backend — FastAPI  port 8000\nPOST /scan  →  validates URL\nWeek 1–2 foundation"]
+
+    CLONER["📁 repo_cloner.py\ngit clone --depth=1  →  /tmp/repos/\nToken injected into URL for private repos"]
+
+    LANG["🔍 language_detection.py\nDetects Python / JS / Go / Java"]
+
+    subgraph SCANNERS["10 SCANNERS — run in parallel  asyncio thread pool  — Week 3–4"]
+        SEMGREP["Semgrep\nCode patterns"]
+        GITLEAKS["Gitleaks\nSecrets in files"]
+        TRIVY["Trivy\nCVE libraries"]
+        TRUFFLEHOG["TruffleHog\nGit history secrets"]
+        BANDIT["Bandit\nPython security"]
+        SAFETY["Safety\nPython CVEs"]
+        ESLINT["ESLint\nJS/TS security"]
+        GOSEC["Gosec\nGo security"]
+        SPOTBUGS["SpotBugs\nJava bytecode"]
+        OWASP["OWASP Dep-Check\nJava CVE libs"]
+    end
+
+    NORM["🔧 normalizer.py\nAll findings → unified schema + risk score"]
+
+    CLI["📡 classifier_client.py\nSends HIGH/CRITICAL to classifier service"]
+
+    subgraph DOCKER["WEEK 5 — Docker Compose: 3 containers"]
+        REDIS["Redis\nCache by snippet hash\nport 6379"]
+        CLASSIFIER["Classifier Service\nPOST /classify/batch  port 8001\nFastAPI + VulBERTa + CodeBERT"]
+        BACKENDCONTAINER["Backend Container\nScanner + API  port 8000\nAll scanners installed inside"]
+    end
+
+    subgraph MODELS["AI Models"]
+        VULBERTA["VulBERTa\nmrm8488/codebert-base-finetuned\n→ vuln type + confidence score"]
+        CODEBERT["CodeBERT\nmicrosoft/codebert-base\n→ semantic similarity score"]
+    end
+
+    ENRICHED["✅ Enriched Findings\nvuln_type · confidence · similarity · risk_score\nFallback: classifier_confidence = 0 if service down"]
+
+    UI["🌐 Browser UI  index.html\nSeverity badges · Fix advice · AI bar\nConfidence % · Code similarity % · Vuln type\nExport PDF · Filter by severity / scanner"]
+
+    USER --> BACKEND
+    BACKEND --> CLONER
+    CLONER --> LANG
+    LANG --> SEMGREP & GITLEAKS & TRIVY & TRUFFLEHOG
+    LANG -->|"Python only"| BANDIT & SAFETY
+    LANG -->|"JS/TS only"| ESLINT
+    LANG -->|"Go only"| GOSEC
+    LANG -->|"Java only"| SPOTBUGS & OWASP
+    SEMGREP & GITLEAKS & TRIVY & TRUFFLEHOG & BANDIT & SAFETY & ESLINT & GOSEC & SPOTBUGS & OWASP --> NORM
+    NORM --> CLI
+    CLI --> REDIS
+    CLI --> CLASSIFIER
+    CLI --> BACKENDCONTAINER
+    CLASSIFIER --> VULBERTA
+    CLASSIFIER --> CODEBERT
+    VULBERTA & CODEBERT --> ENRICHED
+    ENRICHED --> UI
