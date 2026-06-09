@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_IMAGE = "ai-code-scanner-semgrep:latest"
 REPO_MOUNT_PATH = "/repo"
-DEFAULT_OFFLINE_CONFIG = "/opt/semgrep-rules/java"
+DEFAULT_OFFLINE_CONFIG = "auto"
 DOCKER_MEMORY = os.environ.get("DOCKER_SEMGREP_MEMORY", "4g")
 DOCKER_MEMORY_SWAP = os.environ.get("DOCKER_SEMGREP_MEMORY_SWAP", "4g")
 DOCKER_CPUS = os.environ.get("DOCKER_SEMGREP_CPUS", "4")

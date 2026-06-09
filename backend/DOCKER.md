@@ -4,7 +4,7 @@
 
 ```bash
 cd backend
-docker build -t ai-code-scanner-semgrep:latest -f Dockerfile .
+docker build -t ai-code-scanner:latest -f Dockerfile .
 ```
 
 ## Why `network none` + `auto` fails
@@ -18,7 +18,7 @@ This image clones **community rules** into **`/opt/semgrep-rules`**. The API def
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `SEMGREP_USE_DOCKER` | `true` | Use Docker for scans |
-| `DOCKER_SEMGREP_IMAGE` | `ai-code-scanner-semgrep:latest` | Image name |
+| `DOCKER_SEMGREP_IMAGE` | `ai-code-scanner:latest` | Image name |
 | `DOCKER_SEMGREP_CONFIG` | `/opt/semgrep-rules` | Semgrep `--config` (absolute path in container for offline) |
 | `DOCKER_SEMGREP_NETWORK` | `none` | `none`, `bridge`, or `host` |
 | `DOCKER_SEMGREP_MEMORY` | `2g` | `--memory` |

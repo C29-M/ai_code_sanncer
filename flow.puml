@@ -1,0 +1,99 @@
+@startuml AI_Code_Scanner_Flow
+
+skinparam backgroundColor #0f1419
+skinparam defaultFontColor #e6e6e6
+skinparam defaultFontName Arial
+skinparam ArrowColor #334155
+skinparam NoteBorderColor #30363d
+skinparam NoteBackgroundColor #161b22
+skinparam NoteFontColor #94a3b8
+
+skinparam rectangle {
+    BackgroundColor #161b22
+    BorderColor #30363d
+    FontColor #e6e6e6
+}
+
+title AI Code Scanner — Full Flow (Week 1 → Week 5)
+
+actor "USER\nPastes GitHub URL + optional token\nBrowser → http://localhost:8000" as USER #1e3a5f
+
+rectangle "Backend — FastAPI  (port 8000)\nPOST /scan  →  validates URL\nWeek 1–2 foundation" as BACKEND #161b22
+
+rectangle "repo_cloner.py\ngit clone --depth=1  →  /tmp/repos/\nToken injected into URL for private repos" as CLONER #161b22
+
+rectangle "language_detection.py\nDetects Python / JS / Go / Java" as LANG #161b22
+
+package "10 SCANNERS — run in parallel (asyncio thread pool) — Week 3–4" as SCANNERS {
+    rectangle "Semgrep\nCode patterns" as SEMGREP #14532d
+    rectangle "Gitleaks\nSecrets in files" as GITLEAKS #431407
+    rectangle "Trivy\nCVE libraries" as TRIVY #1e3a5f
+    rectangle "TruffleHog\nGit history secrets" as TRUFFLEHOG #431407
+    rectangle "Bandit\nPython security" as BANDIT #14532d
+    rectangle "Safety\nPython CVEs" as SAFETY #14532d
+    rectangle "ESLint\nJS/TS security" as ESLINT #14532d
+    rectangle "Gosec\nGo security" as GOSEC #14532d
+    rectangle "SpotBugs\nJava bytecode" as SPOTBUGS #1e3a5f
+    rectangle "OWASP Dep-Check\nJava CVE libs" as OWASP #1e3a5f
+}
+
+rectangle "normalizer.py\nAll findings → unified schema + risk score" as NORM #161b22
+
+rectangle "classifier_client.py\nSends HIGH/CRITICAL to classifier service" as CLI #1a0a2e
+
+package "WEEK 5 — Docker Compose: 3 containers" as DOCKER {
+    rectangle "Redis\nCache by snippet hash\nport 6379" as REDIS #1a0a0a
+    rectangle "Classifier Service\nPOST /classify/batch  port 8001\nFastAPI + VulBERTa + CodeBERT" as CLASSIFIER #1a0a2e
+    rectangle "Backend Container\nScanner + API  port 8000\nAll scanners installed inside" as BACKENDCONTAINER #0d1117
+}
+
+package "AI Models" as MODELS {
+    rectangle "VulBERTa\nmrm8488/codebert-base-finetuned\n→ vuln type + confidence score" as VULBERTA #1a0a2e
+    rectangle "CodeBERT\nmicrosoft/codebert-base\n→ semantic similarity score" as CODEBERT #1a0a2e
+}
+
+rectangle "Enriched Findings\nvuln_type · confidence · similarity · risk_score\nFallback: classifier_confidence = 0 if service down" as ENRICHED #161b22
+
+rectangle "Browser UI  (index.html)\nSeverity badges · Fix advice · AI bar\nConfidence % · Code similarity % · Vuln type\nExport PDF · Filter by severity / scanner" as UI #1e3a5f
+
+USER --> BACKEND
+BACKEND --> CLONER
+CLONER --> LANG
+
+LANG --> SEMGREP
+LANG --> GITLEAKS
+LANG --> TRIVY
+LANG --> TRUFFLEHOG
+LANG --> BANDIT : Python only
+LANG --> SAFETY : Python only
+LANG --> ESLINT : JS/TS only
+LANG --> GOSEC : Go only
+LANG --> SPOTBUGS : Java only
+LANG --> OWASP : Java only
+
+SEMGREP --> NORM
+GITLEAKS --> NORM
+TRIVY --> NORM
+TRUFFLEHOG --> NORM
+BANDIT --> NORM
+SAFETY --> NORM
+ESLINT --> NORM
+GOSEC --> NORM
+SPOTBUGS --> NORM
+OWASP --> NORM
+
+NORM --> CLI
+
+CLI --> REDIS
+CLI --> CLASSIFIER
+CLI --> BACKENDCONTAINER
+
+CLASSIFIER --> VULBERTA
+CLASSIFIER --> CODEBERT
+
+VULBERTA --> ENRICHED
+CODEBERT --> ENRICHED
+
+ENRICHED --> UI
+
+@enduml

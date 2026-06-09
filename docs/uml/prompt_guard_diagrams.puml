@@ -1,0 +1,531 @@
+' =============================================================
+' prompt_guard Integration — UML Diagrams
+' Project: AI Code Scanner  |  Author: Charan M
+' Date: 2026-06-04
+' =============================================================
+
+
+' ─────────────────────────────────────────────────────────────
+' DIAGRAM 1 — High-Level System Architecture
+' ─────────────────────────────────────────────────────────────
+
+@startuml 01_high_level_architecture
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 13
+skinparam roundCorner 10
+skinparam shadowing false
+
+skinparam rectangle {
+  BackgroundColor #EEF4FF
+  BorderColor #4A6FA5
+  FontColor #1A1A2E
+  BorderThickness 2
+}
+skinparam database {
+  BackgroundColor #FFF5E6
+  BorderColor #D08B3A
+}
+skinparam cloud {
+  BackgroundColor #E8F5E9
+  BorderColor #388E3C
+}
+skinparam arrow {
+  Color #4A6FA5
+  FontColor #333333
+  FontSize 11
+}
+
+title <b>High-Level System Architecture</b>\nAI Code Scanner + Prompt Guard Integration
+
+actor "Developer / User" as User #LightSteelBlue
+
+rectangle "Frontend\n(Static Web UI)" as UI
+rectangle "Backend API\n(FastAPI — main.py)" as API
+rectangle "Repo Scanner\nPipeline" as RepoScanner {
+  rectangle "10 Parallel Scanners\n(Semgrep · Bandit · ESLint · Gitleaks\nGoSec · Trivy · TruffleHog · Safety\nOWASP DepCheck · SpotBugs)" as Scanners
+  rectangle "Normalizer\n(normalizer.py)" as Normalizer
+}
+
+rectangle "Prompt Guard\n(prompt_guard package)" as PG #E3F2FD {
+  rectangle "PromptScanner\n(scanner.py)" as Scanner
+  rectangle "Analysis Engine" as AnalysisEngine {
+    rectangle "Static Analyzer" as SA
+    rectangle "Heuristic Analyzer" as HA
+    rectangle "Semantic Analyzer" as SeA
+    rectangle "Encoding Detector" as ED
+  }
+  rectangle "Risk Scoring Engine\n(scoring.py)" as Scoring
+}
+
+cloud "LLM Service\n(External / Self-hosted)" as LLM
+database "Findings DB\n& Reporting Layer" as DB
+
+User --> UI : "Submit scan request\nor prompt query"
+UI --> API : "HTTP POST /scan\nor /prompt/analyze"
+API --> RepoScanner : "Clone & scan\nrepository"
+API --> PG : "Intercept prompt\nbefore LLM call"
+RepoScanner --> Normalizer : raw findings
+Normalizer --> DB : normalised findings
+PG --> Scanner
+Scanner --> AnalysisEngine
+AnalysisEngine --> Scoring : findings list
+Scoring --> API : "ScanResult\n(safe | risk_score | findings)"
+API --> LLM : "Forward ONLY if safe == True"
+LLM --> API : LLM response
+API --> DB : audit log
+API --> UI : JSON response
+DB --> UI : historical reports
+
+note right of PG
+  <b>Intercept Point</b>
+  Prompt Guard sits between
+  the API and the LLM.
+  Unsafe prompts are blocked
+  before any LLM call is made.
+end note
+
+note bottom of RepoScanner
+  Existing pipeline — unchanged.
+  Prompt Guard is an additive layer.
+end note
+
+@enduml
+
+
+' ─────────────────────────────────────────────────────────────
+' DIAGRAM 2 — Prompt Scanning Workflow (Activity / Sequence)
+' ─────────────────────────────────────────────────────────────
+
+@startuml 02_prompt_scanning_workflow
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam ArrowColor #4A6FA5
+skinparam ActivityBorderColor #4A6FA5
+skinparam ActivityBackgroundColor #EEF4FF
+skinparam ActivityDiamondBackgroundColor #FFF9C4
+skinparam ActivityDiamondBorderColor #F9A825
+skinparam NoteBackgroundColor #E8F5E9
+skinparam NoteBorderColor #388E3C
+
+title <b>Prompt Scanning Workflow</b>\nRuntime Prompt Security Analysis Pipeline
+
+start
+
+:User submits a prompt;
+note right: Any natural-language input\ntargeted at the LLM
+
+:API receives request\n(POST /prompt/analyze);
+
+:Instantiate **PromptScanner**\nwith ScanConfig;
+
+partition "**Text Pre-processing**" {
+  :Normalize text\n(normalize_text());
+  :Check for suspicious encoding\n(has_suspicious_encoding());
+  if (Suspicious encoding detected?) then (yes)
+    :Decode and add decoded\nvariant to scan queue;
+    note right: Catches Base64,\nURL-encoded, Unicode\nobfuscation attacks
+  else (no)
+  endif
+}
+
+partition "**Analysis Pipeline**  (parallel passes)" {
+  fork
+    :Static Analyzer\n──────────────\nPattern matching\ninjection_rules\njailbreak_rules\nexfiltration_rules\nroleplay_rules;
+  fork again
+    :Heuristic Analyzer\n──────────────\nBehavioral signals\nInstruction override\nPatterns & n-grams;
+  fork again
+    :Semantic Analyzer\n──────────────\nContextual intent\nMeaning-level checks\nInstruction semantics;
+  end fork
+
+  :Merge all findings;
+  :Deduplicate findings\n(_deduplicate_findings());
+}
+
+partition "**Risk Scoring**" {
+  :Calculate risk score\n(calculate_risk_score());
+  note right: Weighted sum across\nfinding types & severities\nScore range: 0.0 – 100.0
+  :Determine risk level\n(LOW | MEDIUM | HIGH | CRITICAL);
+  :Generate summary &\nrecommendations;
+}
+
+if (risk_score < risk_threshold\n**safe == True**?) then (Safe)
+  #palegreen:Forward prompt to LLM;
+  :Receive LLM response;
+  :Return response to user\n(HTTP 200 + ScanResult metadata);
+else (Risky)
+  #tomato:Block request — do NOT call LLM;
+  :Return structured findings\nto caller (HTTP 200, safe=false);
+  note right
+    Response includes:
+    • risk_score
+    • risk_level
+    • findings[] with severity
+    • recommendations[]
+  end note
+  :Audit log written to DB;
+endif
+
+:End;
+stop
+
+@enduml
+
+
+' ─────────────────────────────────────────────────────────────
+' DIAGRAM 3 — Component Diagram (prompt_guard internals)
+' ─────────────────────────────────────────────────────────────
+
+@startuml 03_component_diagram
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+skinparam component {
+  BackgroundColor #EEF4FF
+  BorderColor #4A6FA5
+  FontColor #1A1A2E
+  BorderThickness 1.5
+}
+skinparam package {
+  BackgroundColor #F5F5F5
+  BorderColor #9E9E9E
+  FontStyle bold
+}
+skinparam interface {
+  BackgroundColor white
+  BorderColor #4A6FA5
+}
+skinparam arrow {
+  Color #4A6FA5
+  FontSize 10
+}
+
+title <b>Component Diagram</b>\nprompt_guard Package — Internal Structure
+
+package "prompt_guard" {
+
+  package "Public API" #EEF4FF {
+    [scanner.py\nPromptScanner] as SCANNER
+    [cli.py\nCLI Interface] as CLI
+    [__init__.py\nPublic Exports] as INIT
+  }
+
+  package "Configuration" #FFF9C4 {
+    [config.py\nScanConfig\nDEFAULT_CONFIG] as CONFIG
+  }
+
+  package "Analyzers" #E8F5E9 {
+    [static_analyzer.py\nStaticAnalyzer] as STATIC
+    [heuristic_analyzer.py\nHeuristicAnalyzer] as HEURISTIC
+    [semantic_analyzer.py\nSemanticAnalyzer] as SEMANTIC
+  }
+
+  package "Rules Engine" #FFF3E0 {
+    [injection_rules.py] as INJECT
+    [jailbreak_rules.py] as JAILBREAK
+    [exfiltration_rules.py] as EXFIL
+    [roleplay_rules.py] as ROLEPLAY
+  }
+
+  package "Utilities" #F3E5F5 {
+    [encoding_detector.py\ndecode_and_check\nhas_suspicious_encoding] as ENCDET
+    [text_utils.py\nnormalize_text] as TXTUTIL
+  }
+
+  package "Scoring & Findings" #FCE4EC {
+    [scoring.py\ncalculate_risk_score\ndetermine_risk_level\ngenerate_recommendations] as SCORING
+    [findings.py\nFinding · ScanResult\nFindingType · Severity] as FINDINGS
+  }
+
+  package "Optional Integrations" #ECEFF1 {
+    [garak_adapter.py\nGarakAdapter] as GARAK
+    [nemo_adapter.py\nNemoAdapter] as NEMO
+    [guardrails_adapter.py\nGuardrailsAdapter] as GUARDRAILS
+  }
+
+}
+
+' External actors
+[Backend API\n(main.py)] as BACKENDAPI #LightSteelBlue
+[LLM Service] as LLM #palegreen
+
+' Public entry points
+BACKENDAPI --> INIT : "import scan_prompt()"
+CLI --> SCANNER : "scan(prompt)"
+INIT --> SCANNER
+
+' Scanner orchestration
+SCANNER --> CONFIG : reads
+SCANNER --> STATIC : analyze(text)
+SCANNER --> HEURISTIC : analyze(text)
+SCANNER --> SEMANTIC : analyze(text)
+SCANNER --> ENCDET : pre-process
+SCANNER --> TXTUTIL : normalize
+SCANNER --> SCORING : calculate_risk_score(findings)
+SCANNER --> FINDINGS : build ScanResult
+SCANNER --> GARAK : "optional scan()"
+SCANNER --> NEMO : "optional scan()"
+SCANNER --> GUARDRAILS : "optional scan()"
+
+' Rules wired into analyzers
+STATIC --> INJECT : loads rules
+STATIC --> JAILBREAK : loads rules
+STATIC --> EXFIL : loads rules
+STATIC --> ROLEPLAY : loads rules
+HEURISTIC --> INJECT : references
+HEURISTIC --> JAILBREAK : references
+
+' Scoring uses findings types
+SCORING --> FINDINGS : "uses FindingType\n& Severity weights"
+
+' Result flow
+SCANNER --> BACKENDAPI : "ScanResult"
+BACKENDAPI --> LLM : "only if safe == True"
+
+note bottom of GARAK
+  Requires:
+  pip install garak
+end note
+
+note bottom of NEMO
+  Requires:
+  pip install nemoguardrails
+end note
+
+note bottom of GUARDRAILS
+  Requires:
+  pip install guardrails-ai
+end note
+
+@enduml
+
+
+' ─────────────────────────────────────────────────────────────
+' DIAGRAM 4 — Future Architecture (Roadmap)
+' ─────────────────────────────────────────────────────────────
+
+@startuml 04_future_architecture
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam roundCorner 8
+
+skinparam rectangle {
+  BackgroundColor #EEF4FF
+  BorderColor #4A6FA5
+  FontColor #1A1A2E
+  BorderThickness 2
+}
+skinparam database {
+  BackgroundColor #FFF5E6
+  BorderColor #D08B3A
+}
+skinparam cloud {
+  BackgroundColor #E8F5E9
+  BorderColor #388E3C
+}
+skinparam arrow {
+  Color #4A6FA5
+  FontSize 11
+}
+
+title <b>Future Architecture Roadmap</b>\nprompt_guard — Expanded Integration Targets
+
+actor "User / Developer" as User
+
+rectangle "Frontend\nWeb Dashboard (v2)" as UI #EEF4FF
+rectangle "Backend API\n(FastAPI)" as API #EEF4FF
+
+rectangle "**Prompt Guard Core**\n(Current — v0.1.0)" as PGCore #DCEEFB {
+  rectangle "Static Analyzer" as SA
+  rectangle "Heuristic Analyzer" as HA
+  rectangle "Semantic Analyzer" as SeA
+  rectangle "Encoding Detector" as ED
+  rectangle "Risk Scoring Engine" as RS
+}
+
+rectangle "**Phase 2 — Deep Validation Layer**" as Phase2 #E8F5E9 {
+  rectangle "Garak\n(Adversarial probe\ntesting)" as Garak
+  rectangle "NeMo Guardrails\n(Dialogue-level\npolicy enforcement)" as Nemo
+  rectangle "Guardrails AI\n(Output validation\n& structured checks)" as GuardAI
+  rectangle "OWASP LLM\nTop 10 Checks\n(LLM01–LLM10)" as OWASP
+}
+
+rectangle "**Phase 3 — Observability & Reporting**" as Phase3 #FFF9C4 {
+  rectangle "Reporting Engine\n(PDF / HTML reports\nper scan session)" as ReportEngine
+  rectangle "Analytics Dashboard\n(Trend analysis,\nfinding frequency,\nrisk heatmaps)" as Dashboard
+  rectangle "Alerting\n(Webhook / Slack\nfor CRITICAL findings)" as Alerts
+}
+
+database "Audit & Findings DB\n(PostgreSQL / SQLite)" as DB #FFF5E6
+
+cloud "LLM Service" as LLM #E8F5E9
+
+User --> UI
+UI --> API : "HTTP requests"
+API --> PGCore : "Prompt scan\n(every LLM-bound request)"
+PGCore --> Phase2 : "Optional deep\nvalidation pass"
+Phase2 --> RS : "Additional findings"
+RS --> API : ScanResult
+API --> LLM : "Forward if safe"
+LLM --> API
+API --> DB : "Audit every scan"
+DB --> Phase3 : feeds
+Phase3 --> ReportEngine : scan history
+Phase3 --> Dashboard : aggregated metrics
+Phase3 --> Alerts : threshold breach
+ReportEngine --> UI : downloadable report
+Dashboard --> UI : live metrics view
+Alerts --> User : notification
+
+note right of OWASP
+  <b>OWASP LLM Top 10</b>
+  LLM01: Prompt Injection
+  LLM02: Insecure Output Handling
+  LLM06: Sensitive Info Disclosure
+  LLM08: Excessive Agency
+  (and more)
+end note
+
+note bottom of Phase2
+  <b>All Phase 2 integrations are optional</b>
+  and can be enabled via ScanConfig flags:
+  enable_garak · enable_nemo · enable_guardrails
+end note
+
+note right of Dashboard
+  <b>Planned metrics</b>
+  • Finding frequency by type
+  • Risk score distribution
+  • Blocked vs. allowed ratio
+  • Attack pattern trends
+end note
+
+@enduml
+
+
+' ─────────────────────────────────────────────────────────────
+' DIAGRAM 5 — Deployment Flow (Request Pipeline)
+' ─────────────────────────────────────────────────────────────
+
+@startuml 05_deployment_flow
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+skinparam roundCorner 6
+
+skinparam participant {
+  BackgroundColor #EEF4FF
+  BorderColor #4A6FA5
+  FontColor #1A1A2E
+}
+skinparam actor {
+  BackgroundColor #DCEEFB
+  BorderColor #4A6FA5
+}
+skinparam sequence {
+  GroupBackgroundColor #FFF9C4
+  GroupBorderColor #F9A825
+  GroupHeaderFontColor #333333
+  DividerBackgroundColor #E3F2FD
+  DividerBorderColor #90CAF9
+  LifeLineBorderColor #9E9E9E
+  ArrowColor #4A6FA5
+}
+skinparam note {
+  BackgroundColor #E8F5E9
+  BorderColor #388E3C
+}
+
+title <b>Deployment Flow Diagram</b>\nPrompt Guard in the Backend Request Pipeline
+
+actor "User" as User
+participant "Web UI\n(Frontend)" as UI
+participant "FastAPI\nBackend" as API
+participant "prompt_guard\nPromptScanner" as PG
+participant "Risk Scoring\nEngine" as SCORING
+participant "Audit DB\n& Logger" as DB
+participant "LLM Service\n(External)" as LLM
+
+== Standard Repo Scan Flow (unchanged) ==
+
+User -> UI : Submit GitHub URL
+UI -> API : POST /scan { repo_url }
+API -> API : clone_repository()
+API -> API : detect_languages()
+API -> API : run 10 parallel scanners\n(Semgrep, Bandit, ESLint, ...)
+API -> API : normalise_all(findings)
+API --> UI : ScanResponse (findings JSON)
+
+|||
+
+== Prompt Security Flow (NEW — Prompt Guard) ==
+
+User -> UI : Submit prompt / query
+UI -> API : POST /prompt/analyze { prompt }
+
+group Prompt Guard Intercept Layer
+  API -> PG : scan(prompt, config)
+
+  group Analysis Pipeline
+    PG -> PG : normalize_text(prompt)
+    PG -> PG : has_suspicious_encoding()
+    PG -> PG : StaticAnalyzer.analyze()
+    PG -> PG : HeuristicAnalyzer.analyze()
+    PG -> PG : SemanticAnalyzer.analyze()
+    PG -> PG : _deduplicate_findings()
+  end
+
+  PG -> SCORING : calculate_risk_score(findings)
+  SCORING --> PG : risk_score, risk_level
+  PG --> API : ScanResult(safe, risk_score, findings, recommendations)
+end
+
+API -> DB : audit_log(prompt_hash, scan_result)
+
+alt safe == True (risk_score below threshold)
+  API -> LLM : Forward prompt
+  LLM --> API : LLM response text
+  API --> UI : HTTP 200\n{ response, scan_metadata }
+  note right of API
+    scan_metadata includes:
+    • risk_score (e.g. 12.5)
+    • risk_level: LOW
+    • scan_time_seconds
+  end note
+
+else safe == False (risk_score at/above threshold)
+  API -[#CC0000]-> UI : HTTP 200\n{ safe: false, findings[], recommendations[] }
+  note right of API #FFE0E0
+    Prompt BLOCKED.
+    LLM is never called.
+    Findings detail why:
+    e.g. "jailbreak_attempt [HIGH]"
+  end note
+end
+
+|||
+== Deployment Environment ==
+
+note over API, PG
+  <b>Same Process — Same Container</b>
+  prompt_guard is installed as a Python package
+  alongside the FastAPI backend.
+  No additional service or network hop required.
+  Latency overhead: ~5–50 ms per scan (measured).
+end note
+
+@enduml

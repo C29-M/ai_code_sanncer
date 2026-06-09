@@ -30,3 +30,13 @@ class RepoTooLargeError(ScannerError):
 class SemgrepScanError(ScannerError):
     def __init__(self, message: str = "Semgrep scan failed.") -> None:
         super().__init__(message, status_code=500)
+
+
+class GitleaksScanError(ScannerError):
+    def __init__(self, message: str = "Gitleaks scan failed.") -> None:
+        super().__init__(message, status_code=500)
+
+
+class TrivyScanError(ScannerError):
+    def __init__(self, message: str = "Trivy scan failed.") -> None:
+        super().__init__(message, status_code=500)

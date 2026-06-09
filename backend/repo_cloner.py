@@ -1,3 +1,4 @@
+import os
 import re
 import shutil
 import uuid
@@ -16,8 +17,7 @@ GIT_HTTPS_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-REPOSITORIES_DIR = PROJECT_ROOT / "temp" / "repositories"
+REPOSITORIES_DIR = Path("/tmp/repositories")
 
 # Plan: reject repos > 100 MB to prevent disk-fill / DoS via giant repos.
 MAX_REPO_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
@@ -71,13 +71,17 @@ def _destination_name(repo_url: str) -> str:
     return f"{owner}_{repo}_{suffix}"
 
 
-def clone_repository(repo_url: str) -> Path:
-    """
-    Clone a public git repository into ./temp/repositories/ and enforce the
-    plan-mandated 100 MB size cap.
+def _inject_token(url: str, token: str) -> str:
+    """Inject a GitHub token into an HTTPS URL: https://token@github.com/..."""
+    return url.replace("https://", f"https://{token}@", 1)
 
-    Returns the local path to the cloned repository. Raises RepoTooLargeError
-    if the clone exceeds MAX_REPO_SIZE_BYTES.
+
+def clone_repository(repo_url: str, github_token: str | None = None) -> Path:
+    """
+    Clone a git repository into /tmp/repositories/ and enforce the 100 MB cap.
+
+    Pass github_token to clone private repositories.
+    Returns the local path to the cloned repository.
     """
     normalized_url = validate_git_url(repo_url)
     REPOSITORIES_DIR.mkdir(parents=True, exist_ok=True)
@@ -87,9 +91,17 @@ def clone_repository(repo_url: str) -> Path:
     if destination.exists():
         shutil.rmtree(destination, ignore_errors=True)
 
+    # Token priority: explicit arg → GITHUB_TOKEN env var → no auth (public repos)
+    effective_token = github_token or os.environ.get("GITHUB_TOKEN") or None
+    clone_url = (
+        _inject_token(normalized_url, effective_token)
+        if effective_token
+        else normalized_url
+    )
+
     try:
         Repo.clone_from(
-            normalized_url,
+            clone_url,
             destination,
             depth=1,
         )

@@ -1,0 +1,69 @@
+# Week 5 — AI Code Scanner full stack
+# Services:
+#   backend    : FastAPI scanner (port 8000)
+#   classifier : VulBERTa + CodeBERT inference (port 8001)
+#   redis      : Result cache for classifier (port 6379)
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  classifier:
+    build:
+      context: ./classifier
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      # Cache HuggingFace model downloads — avoids ~500MB re-download on restart
+      - hf_model_cache:/models_cache
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s   # models take ~60-90s to load on first cold start
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      CLASSIFIER_URL: http://classifier:8001
+      CLASSIFIER_TIMEOUT_S: "10"
+      SEMGREP_USE_DOCKER: "false"
+      SEMGREP_RULES_PATH: /opt/semgrep-rules
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SCAN_TIMEOUT_SECONDS: "600"
+    volumes:
+      - ./backend/static:/home/scanner/static:ro
+    depends_on:
+      classifier:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  hf_model_cache:
+    driver: local

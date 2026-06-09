@@ -1,0 +1,2 @@
+[console_scripts]
+prompt-guard = prompt_guard.cli:main

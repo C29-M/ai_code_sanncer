@@ -1,0 +1,9 @@
+# Intentional fake secrets used as test fixtures — not real credentials
+backend/tests/test_normalizer.py:aws-access-token:129
+backend/tests/test_normalizer.py:aws-access-token:225
+backend/tests/test_normalizer.py:aws-access-token:226
+backend/tests/test_normalizer.py:aws-access-token:274
+backend/tests/test_normalizer.py:aws-access-token:728
+backend/tests/test_normalizer.py:aws-access-token:784
+backend/tests/test_normalizer.py:private-key:97
+classifier/reference_corpus.py:generic-api-key:57

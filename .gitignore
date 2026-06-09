@@ -29,3 +29,9 @@ Thumbs.db
 .env
 .env.local
 *.local
+
+# Test virtual environments
+.venv_test/
+
+# Accuracy reports (generated)
+accuracy_report.json

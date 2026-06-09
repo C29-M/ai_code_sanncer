@@ -85,11 +85,12 @@ def run_semgrep_scan(repo_path: Path) -> dict:
 
         return run_semgrep_in_docker(repo_path)
 
+    rules_path = os.environ.get("SEMGREP_RULES_PATH", "auto")
     command = [
         _semgrep_executable(),
         "scan",
         "--config",
-        "auto",
+        rules_path,
         "--json",
         str(repo_path),
     ]
