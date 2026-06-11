@@ -1,0 +1,116 @@
+flowchart TD
+
+    %% ─────────────────────────────────────────
+    subgraph RAW["Stage 1 — Raw Data"]
+        direction TB
+        F1["corpus_master.csv\n194k messages\n(unlabeled)"]
+        F2["labeled.jsonl\n17k messages\n(hand-labeled)"]
+        F3["auto_labeled.jsonl\n131k messages\n(auto-labeled)"]
+        MERGE["Merge & Deduplicate\n[pandas]\ncombined_labeled.jsonl · 149k rows"]
+        F1 & F2 & F3 --> MERGE
+    end
+
+    %% ─────────────────────────────────────────
+    subgraph QUALITY["Stage 2 — Label Quality Check"]
+        direction TB
+        PROBA["Model Confidence Scores\nmodel_proba.npz"]
+        CLEAN["Find Suspect Labels\n[Cleanlab]\nranks every row by label-error probability"]
+        HUMAN["Human Review\ntop 500 flagged rows reviewed manually"]
+        FIXED["Fixed Labels\ncombined_labeled.jsonl (cleaned)"]
+        MERGE --> CLEAN
+        PROBA --> CLEAN
+        CLEAN --> HUMAN --> FIXED
+    end
+
+    %% ─────────────────────────────────────────
+    subgraph AUGMENT["Stage 3 — Data Augmentation  (~400k messages)"]
+        direction TB
+        BACKT["Back-Translation\n[IndicTrans2]\nEnglish → Hindi → English\npreserves meaning, changes wording"]
+        PARA["Paraphrase Generation\n[Gemini API]\nLLM rewrites each message 2–3 ways"]
+        TYPO["Typo Injection\n[custom script]\ninserts realistic spelling errors"]
+        AUG_OUT["~400k Augmented Messages\n(merged with cleaned data)"]
+        FIXED --> BACKT & PARA & TYPO
+        BACKT & PARA & TYPO --> AUG_OUT
+    end
+
+    %% ─────────────────────────────────────────
+    subgraph CONTRAST["Stage 4 — Contrastive Pair Generation"]
+        direction TB
+        SEED["17k Seed Messages\n(hand-labeled)"]
+        COUNTER["Manual Counterfactuals\n'Set alarm for 7am' vs 'What time is it?'\n(near-identical wording, different intent)"]
+        PAIRS["51k Contrastive Pairs\n(positive + hard-negative per message)"]
+        SEED --> COUNTER --> PAIRS
+    end
+
+    %% ─────────────────────────────────────────
+    subgraph TRAIN["Stage 5 — Model Training"]
+        direction TB
+        BASE["Base Model\ngoogle/muril-base-cased\n[HuggingFace Transformers]\n(multilingual BERT for Indian languages)"]
+        WRAP["Embedding Wrapper\n[sentence-transformers]\nproduces fixed-size sentence vectors"]
+        LOSS["Combined Loss Function\n[PyTorch on GPU]\nNT-Xent · Asymmetric Loss · R-Drop"]
+        CKPT["Saved Checkpoint\nmuril_spoc_v2.pt"]
+        AUG_OUT & PAIRS --> BASE --> WRAP --> LOSS --> CKPT
+    end
+
+    %% ─────────────────────────────────────────
+    subgraph PROTO["Stage 6 — Prototype Fitting"]
+        direction TB
+        EMBED["Generate Embeddings\nfor all training messages\n[trained MuRIL model]"]
+        COV["Estimate Covariance\n[sklearn · LedoitWolf]\nmore stable than plain sample covariance"]
+        BAYESIAN["Bayesian Prototypes\none prototype vector per intent class\nsaved as prototypes_bayesian.pkl"]
+        CKPT --> EMBED --> COV --> BAYESIAN
+    end
+
+    %% ─────────────────────────────────────────
+    subgraph EVAL["Stage 7 — GOLD Evaluation  (must pass before deploy)"]
+        direction TB
+        GOLD["~600 Human-Verified Messages\nGOLD test set\n(never seen during training)"]
+        F1["Macro-F1 Score\n[sklearn · f1_score]\ngate: F1 ≥ 0.85 AND train/test gap ≤ 5%"]
+        GOLD --> F1
+    end
+
+    %% ─────────────────────────────────────────
+    subgraph BEHAV["Stage 8 — Behavioral Tests  (5 test suites)"]
+        direction TB
+        T1["Minimal Pairs\nsame words, different intent"]
+        T2["Typo Robustness\ndeliberate misspellings"]
+        T3["Code-Mix\nHinglish / mixed-script messages"]
+        T4["Negation Handling\n'don't remind me' ≠ reminder"]
+        T5["Domain Shift\nout-of-domain vocabulary"]
+        BGATE["Pass Gate\n[custom test scripts]\n≥ 85% pass rate across all 5 suites"]
+        T1 & T2 & T3 & T4 & T5 --> BGATE
+    end
+
+    %% ─────────────────────────────────────────
+    subgraph PROD["Stage 9 — Production Inference"]
+        direction TB
+        MSG["New Message Arrives"]
+        REGEX["Deterministic Filter\n[regex rules]\ncatch obvious cases fast without a model"]
+        MURIL["Encode Message\n[MuRIL model]\nconverts text → embedding vector"]
+        OOD["Out-of-Distribution Check\n[Mahalanobis distance · numpy]\nflags messages that don't look like any intent"]
+        CLASS["Prototype Classification\ncompare embedding to stored prototypes\nclosest prototype wins"]
+        OUT["Output Probabilities\n{ task, reminder, event, none }"]
+        MSG --> REGEX --> MURIL --> OOD --> CLASS --> OUT
+    end
+
+    %% ─────────────────────────────────────────
+    %% Cross-stage connections
+    BAYESIAN --> PROD
+    F1       -->|"PASS"| BEHAV
+    F1       -->|"FAIL — retrain"| TRAIN
+    BGATE    -->|"PASS"| PROD
+    BGATE    -->|"FAIL — retrain"| TRAIN
+
+    %% ─────────────────────────────────────────
+    %% Styles
+    classDef gate    fill:#fff3cd,stroke:#f0ad4e,color:#333,font-weight:bold
+    classDef model   fill:#d4edda,stroke:#28a745,color:#222
+    classDef data    fill:#d1ecf1,stroke:#17a2b8,color:#222
+    classDef tool    fill:#e2d9f3,stroke:#6f42c1,color:#222
+    classDef output  fill:#f8d7da,stroke:#dc3545,color:#222
+
+    class F1,BGATE gate
+    class BASE,WRAP,LOSS,CKPT,EMBED,COV,BAYESIAN model
+    class MERGE,AUG_OUT,PAIRS,FIXED data
+    class CLEAN,BACKT,PARA,TYPO,COUNTER,MURIL,OOD,CLASS tool
+    class OUT output
