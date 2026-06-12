@@ -1,12 +1,12 @@
 """
 TruffleHog runner — runs inside Docker using trufflesecurity/trufflehog:latest.
 Mounts the cloned repo at /repo and scans full git history.
-No timeouts — scans run as long as needed.
 """
 
 from __future__ import annotations
 import json
 import logging
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 TRUFFLEHOG_V3_SUCCESS_CODES = {0, 183}
 DOCKER_IMAGE = "trufflesecurity/trufflehog:latest"
 REPO_MOUNT = "/repo"
+# Default timeout: 5 minutes. Override via TRUFFLEHOG_TIMEOUT_SECONDS env var.
+TRUFFLEHOG_TIMEOUT = int(os.environ.get("TRUFFLEHOG_TIMEOUT_SECONDS", "300"))
 
 
 class TruffleHogScanError(ScannerError):
@@ -84,9 +86,13 @@ def _run_in_docker(repo_path: Path) -> list[dict]:
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=None,
+            timeout=TRUFFLEHOG_TIMEOUT,
             check=False,
         )
+    except subprocess.TimeoutExpired as exc:
+        raise TruffleHogScanError(
+            f"TruffleHog Docker scan timed out after {TRUFFLEHOG_TIMEOUT}s."
+        ) from exc
     except OSError as exc:
         raise TruffleHogScanError(f"Docker run failed: {exc}") from exc
     if r.returncode not in TRUFFLEHOG_V3_SUCCESS_CODES:
@@ -109,15 +115,20 @@ def _run_host(exe: str, repo_path: Path) -> list[dict]:
     target = repo_path.resolve().as_uri()
     logger.info("TruffleHog host: %s", target)
     cmd = [exe, "git", target, "--json", "--no-update", "--concurrency=2"]
-    r = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=None,
-        check=False,
-    )
+    try:
+        r = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=TRUFFLEHOG_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise TruffleHogScanError(
+            f"TruffleHog host scan timed out after {TRUFFLEHOG_TIMEOUT}s."
+        ) from exc
     if r.returncode not in TRUFFLEHOG_V3_SUCCESS_CODES:
         parsed = _parse_jsonl(r.stdout or "")
         if parsed:

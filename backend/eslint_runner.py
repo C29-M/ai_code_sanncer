@@ -1,4 +1,4 @@
-"""ESLint Security runner — supports v9/v10 flat config. Uses project-local eslint. No timeouts."""
+"""ESLint Security runner — supports v9/v10 flat config. Uses project-local eslint."""
 
 from __future__ import annotations
 import json
@@ -9,6 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 from exceptions import ScannerError
+
+ESLINT_TIMEOUT = 120  # seconds
 
 
 class ESLintScanError(ScannerError):
@@ -187,29 +189,17 @@ def run_eslint_scan(repo_path: Path) -> list[dict]:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=None,
+                timeout=ESLINT_TIMEOUT,
                 check=False,
                 env=env,
                 cwd=str(repo_path),
             )
+        except subprocess.TimeoutExpired as exc:
+            raise ESLintScanError(
+                f"ESLint scan timed out after {ESLINT_TIMEOUT}s."
+            ) from exc
         except OSError as exc:
             raise ESLintScanError(f"Failed to run ESLint: {exc}") from exc
-
-        if result.returncode == 2 and is_v9_plus:
-            try:
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=None,
-                    check=False,
-                    env=env,
-                    cwd=str(repo_path),
-                )
-            except Exception:
-                pass
 
         if result.returncode == 2:
             raise ESLintScanError(f"ESLint config error: {(result.stderr or '')[:300]}")
