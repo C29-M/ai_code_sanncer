@@ -1,0 +1,23 @@
+# Gitleaks configuration for AI Code Scanner
+#
+# The scanner intentionally clones repositories that contain fake/test
+# credentials (gosec test samples, WebGoat, scanner-test-targets, etc.)
+# into temp/repositories/ at runtime. Those files are never committed to
+# this repo but the temp/ tree is present in the working copy during local
+# development. The paths below tell Gitleaks to ignore them so CI doesn't
+# flag intentional test secrets from third-party repositories.
+
+[allowlist]
+description = "Ignore scanner runtime artefacts and intentional test data"
+paths = [
+    # Repos cloned by the scanner during test / smoke runs — these
+    # intentionally contain vulnerable / fake-credential code.
+    "temp/repositories",
+    # Scan-result JSON files produced by previous smoke-test runs.
+    # They may contain redacted snippets that match secret patterns.
+    "smoke-test-results",
+    # Any pytest / coverage artefact directories.
+    ".pytest_cache",
+    "htmlcov",
+    "__pycache__",
+]
