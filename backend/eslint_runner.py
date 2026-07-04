@@ -136,7 +136,12 @@ def run_eslint_scan(repo_path: Path) -> list[dict]:
     # CLI's own major version. Use the flat-config path in that case too.
     has_flat_config = any(
         (repo_path / name).exists()
-        for name in ("eslint.config.js", "eslint.config.mjs", "eslint.config.cjs", "eslint.config.ts")
+        for name in (
+            "eslint.config.js",
+            "eslint.config.mjs",
+            "eslint.config.cjs",
+            "eslint.config.ts",
+        )
     )
     is_v9_plus = major >= 9 or has_flat_config
 

@@ -98,7 +98,14 @@ def ensure_trivy_db(timeout: int | None = None) -> None:
 
     try:
         result = subprocess.run(
-            [trivy, "fs", "--download-db-only", "--cache-dir", str(_trivy_cache_dir()), "--quiet"],
+            [
+                trivy,
+                "fs",
+                "--download-db-only",
+                "--cache-dir",
+                str(_trivy_cache_dir()),
+                "--quiet",
+            ],
             capture_output=True,
             text=True,
             timeout=timeout,

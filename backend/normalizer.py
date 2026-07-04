@@ -1044,6 +1044,13 @@ def normalise_trivy(raw_output: dict) -> list[dict]:
                     nvd_score = float(v3)
                     break
 
+            # Drop LOW severity — almost never actionable
+            if severity == "LOW":
+                continue
+            # Drop MEDIUM with no fix available — can't be patched, just noise
+            if severity == "MEDIUM" and not fix_ver:
+                continue
+
             snippet = f"{pkg}@{inst_ver}"
             if fix_ver:
                 snippet += f" -> fix: {fix_ver}"
@@ -1258,6 +1265,11 @@ def normalise_spotbugs(raw_findings: list[dict]) -> list[dict]:
 
     out: list[dict] = []
     for r in raw_findings:
+        # Drop pure code-quality categories — not security relevant
+        bug_category = (r.get("category") or "").upper()
+        if bug_category in _SPOTBUGS_NOISE_CATEGORIES:
+            continue
+
         priority = str(r.get("priority", "2"))
         raw_sev = _PRIORITY_TO_SEV.get(priority, "MEDIUM")
         bug_type = r.get("type", "UNKNOWN")
@@ -1417,7 +1429,9 @@ def normalise_plpgsql(raw_findings: list[dict]) -> list[dict]:
         rule_id = r.get("rule_id", "")
         file_path = r.get("file", "")
         cwe = r.get("cwe", "")
-        risk_score = compute_risk_score("plpgsql", raw_sev, None, r.get("category", "sast"))
+        risk_score = compute_risk_score(
+            "plpgsql", raw_sev, None, r.get("category", "sast")
+        )
         out.append(
             {
                 "tool": "plpgsql",
@@ -1448,12 +1462,18 @@ def normalise_plpgsql(raw_findings: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 # OWASP Dependency-Check normaliser
 # ---------------------------------------------------------------------------
+_SPOTBUGS_NOISE_CATEGORIES = {"PERFORMANCE", "STYLE", "I18N"}
+
+
 def normalise_owasp_depcheck(raw_findings: list[dict]) -> list[dict]:
     """Map OWASP Dependency-Check findings to unified schema."""
     out: list[dict] = []
     for r in raw_findings:
         cve_id = r.get("cve_id", "") or ""
         raw_sev = (r.get("severity") or "MEDIUM").upper()
+        # Drop LOW severity CVEs — not worth fixing
+        if raw_sev == "LOW":
+            continue
         cvss_score = r.get("cvss_score")
         desc = (r.get("description") or cve_id).strip()
         file_path = r.get("file", "")
@@ -1584,5 +1604,7 @@ def normalise_all(
     if plpgsql_findings:
         unified.extend(normalise_plpgsql(plpgsql_findings))
     unified = deduplicate(unified)
+    # Drop INFO-level findings — too noisy, no actionable signal
+    unified = [f for f in unified if f.get("severity") != "INFO"]
     unified.sort(key=lambda x: x["risk_score"], reverse=True)
     return unified[:MAX_FINDINGS]

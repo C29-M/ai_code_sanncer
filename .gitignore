@@ -1,10 +1,37 @@
-.env
-.venv_test/
-node_modules/
-__pycache__/
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
 *.pyc
-temp/
-smoke-test-results/
+.pytest_cache/
+
+# Cloned target repositories (runtime scan workspace)
+temp/repositories/*
+!temp/repositories/.gitkeep
+
+# Smoke-test artifacts (regeneratable)
 smoke-test-targets/
-scanner-test-targets/
+smoke-test-results/
+
+# Early manual eval test file from Phase 2 bring-up
+backend/test.py
+
+# Node / npm
+node_modules/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.local
+*.local
+
+# Claude Code session data
 .claude/
+
+# Scanner test target repos
+scanner-test-targets/

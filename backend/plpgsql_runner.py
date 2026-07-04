@@ -9,7 +9,7 @@ from typing import NamedTuple
 
 class _Rule(NamedTuple):
     rule_id: str
-    severity: str          # HIGH | MEDIUM | LOW
+    severity: str  # HIGH | MEDIUM | LOW
     description: str
     pattern: re.Pattern
     category: str
