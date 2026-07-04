@@ -3,7 +3,9 @@
 from __future__ import annotations
 import asyncio
 import logging
+import re
 import shutil
+import subprocess
 import time
 from pathlib import Path
 from fastapi import BackgroundTasks, FastAPI, Request
@@ -26,6 +28,7 @@ from scanner import extract_findings, run_semgrep_scan
 from spotbugs_runner import run_spotbugs_scan
 from trivy_runner import ensure_trivy_db, run_trivy_scan
 from trufflehog_runner import run_trufflehog_scan
+from plpgsql_runner import run_plpgsql_scan
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 MANIFEST_FILES = {
@@ -103,6 +106,71 @@ def _run_scanner(func, *args):
         return exc
 
 
+_MAVEN_RETRY_AFTER_RE = re.compile(r"Retry-After:\s*(\d+)", re.IGNORECASE)
+
+
+def _prewarm_maven_repo(repo_path: Path) -> None:
+    """
+    Resolve the Maven dependency tree once into the shared local repo
+    (~/.m2) before Trivy, SpotBugs, and OWASP Dependency-Check all try to
+    do it themselves concurrently. Without this, three simultaneous
+    resolvers hitting repo.maven.apache.org at once can trip Maven
+    Central's rate limiter (429), which then locks out the container's IP
+    for the rest of the scan.
+
+    No timeout, no attempt cap — on a 429 we sleep exactly the server's
+    Retry-After and try again, for as long as it takes. Best-effort
+    overall: a final non-429 failure is swallowed since the three
+    downstream scanners still work standalone, just slower.
+    """
+    pom = repo_path / "pom.xml"
+    if not pom.exists():
+        return
+    mvn = shutil.which("mvn") or shutil.which("mvnw")
+    if not mvn:
+        return
+
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            result = subprocess.run(
+                [mvn, "dependency:resolve", "-q", "-B", "-f", str(pom)],
+                capture_output=True,
+                text=True,
+                timeout=None,
+                check=False,
+                cwd=str(repo_path),
+            )
+        except Exception as exc:  # noqa: BLE001 — best-effort warm-up only
+            logger.warning("Maven dependency pre-warm failed (non-fatal): %s", exc)
+            return
+
+        if result.returncode == 0:
+            logger.info("Maven dependency pre-warm succeeded (attempt %d).", attempt)
+            return
+
+        stderr = result.stderr or ""
+        m = _MAVEN_RETRY_AFTER_RE.search(stderr)
+        if "429" in stderr and m:
+            wait_s = int(m.group(1))
+            logger.warning(
+                "Maven pre-warm hit Maven Central rate limit (attempt %d) — "
+                "waiting %ds as instructed.",
+                attempt,
+                wait_s,
+            )
+            time.sleep(wait_s)
+            continue
+
+        logger.warning(
+            "Maven dependency pre-warm exited %d (non-fatal): %s",
+            result.returncode,
+            stderr[-500:],
+        )
+        return
+
+
 def _unpack_list(raw, name: str) -> list:
     if isinstance(raw, Exception):
         logger.warning("Scanner %s skipped: %s", name, raw)
@@ -156,6 +224,7 @@ async def scan_repository(
     has_js = lang_counts.get("javascript", 0) + lang_counts.get("typescript", 0) > 0
     has_go = lang_counts.get("go", 0) > 0
     has_java = lang_counts.get("java", 0) > 0
+    has_sql = lang_counts.get("sql", 0) > 0
     logger.info(
         "Language detection: python=%s js=%s go=%s java=%s | counts=%s",
         has_python,
@@ -170,6 +239,9 @@ async def scan_repository(
         logger.warning("Edge-case: %s", w)
 
     loop = asyncio.get_event_loop()
+    if has_java:
+        await loop.run_in_executor(None, _prewarm_maven_repo, clone_path)
+
     fut_semgrep = loop.run_in_executor(None, run_semgrep_scan, clone_path)
     fut_gitleaks = loop.run_in_executor(
         None, _run_scanner, run_gitleaks_scan, clone_path
@@ -208,6 +280,11 @@ async def scan_repository(
         if has_java
         else None
     )
+    fut_plpgsql = (
+        loop.run_in_executor(None, _run_scanner, run_plpgsql_scan, clone_path)
+        if has_sql
+        else None
+    )
 
     try:
         semgrep_output = await fut_semgrep
@@ -223,6 +300,7 @@ async def scan_repository(
     gosec_raw = await fut_gosec if fut_gosec is not None else None
     spotbugs_raw = await fut_spotbugs if fut_spotbugs is not None else None
     owasp_raw = await fut_owasp if fut_owasp is not None else None
+    plpgsql_raw = await fut_plpgsql if fut_plpgsql is not None else None
     logger.info("All scanners finished")
 
     semgrep_findings = extract_findings(semgrep_output)
@@ -245,6 +323,9 @@ async def scan_repository(
     owasp_findings = (
         _unpack_list(owasp_raw, "owasp_depcheck") if owasp_raw is not None else None
     )
+    plpgsql_findings = (
+        _unpack_list(plpgsql_raw, "plpgsql") if plpgsql_raw is not None else None
+    )
 
     def _status(raw, fut, findings) -> str:
         if fut is None:
@@ -264,6 +345,7 @@ async def scan_repository(
         "gosec": _status(gosec_raw, fut_gosec, gosec_findings),
         "spotbugs": _status(spotbugs_raw, fut_spotbugs, spotbugs_findings),
         "owasp_depcheck": _status(owasp_raw, fut_owasp, owasp_findings),
+        "plpgsql": _status(plpgsql_raw, fut_plpgsql, plpgsql_findings),
     }
     scanners_active = [n for n, s in scanner_status.items() if s == "active"]
 
@@ -278,6 +360,7 @@ async def scan_repository(
         trufflehog_findings=trufflehog_findings,
         spotbugs_findings=spotbugs_findings,
         owasp_depcheck_findings=owasp_findings,
+        plpgsql_findings=plpgsql_findings,
     )
 
     findings_by_severity: dict = {}

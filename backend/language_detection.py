@@ -38,6 +38,10 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".tf": "terraform",
     ".yaml": "yaml",
     ".yml": "yaml",
+    ".sql": "sql",
+    ".pgsql": "sql",
+    ".plpgsql": "sql",
+    ".psql": "sql",
 }
 
 # Folders to ignore during the file walk (vendored / generated / VCS).

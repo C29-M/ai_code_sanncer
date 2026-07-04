@@ -1,0 +1,10 @@
+.env
+.venv_test/
+node_modules/
+__pycache__/
+*.pyc
+temp/
+smoke-test-results/
+smoke-test-targets/
+scanner-test-targets/
+.claude/

@@ -31,7 +31,7 @@ from pathlib import Path
 
 from exceptions import ScannerError
 
-SCAN_TIMEOUT = 300  # seconds — first run downloads NVD DB, so allow extra time
+SCAN_TIMEOUT = None  # no cap — first run downloads the NVD DB, let it finish
 
 _BUILD_MANIFESTS = {"pom.xml", "build.gradle", "build.gradle.kts"}
 

@@ -11,8 +11,8 @@
 #   Secrets (live)   : Gitleaks                         (v8.27.2)
 #   Secrets (history): TruffleHog                       (pip)
 #   Container CVE    : Trivy                             (v0.70.0)
-#   Java SAST        : SpotBugs via mvn spotbugs plugin (JDK 17 + Maven 3)
-#   Java SCA         : OWASP Dependency-Check CLI       (v9.2.0, JRE 17)
+#   Java SAST        : SpotBugs via mvn spotbugs plugin (Temurin JDK 21 + Maven 3)
+#   Java SCA         : OWASP Dependency-Check CLI       (v9.2.0, JRE 21)
 
 ARG NVD_API_KEY=""
 
@@ -36,10 +36,20 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Java 17 JDK ──────────────────────────────────────────────────────────────
+# ── Java 21 JDK (Eclipse Temurin — Debian bookworm only ships JDK 17) ────────
+# Modern Spring Boot 3.2+ projects commonly target java.version=21; SpotBugs
+# needs to compile the project first, so the build JDK must match or exceed it.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends default-jdk-headless \
+    && apt-get install -y --no-install-recommends wget apt-transport-https gnupg \
+    && wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public \
+       | gpg --dearmor | tee /usr/share/keyrings/adoptium.gpg > /dev/null \
+    && echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" \
+       | tee /etc/apt/sources.list.d/adoptium.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends temurin-21-jdk \
     && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # ── Python scanners — two venvs to avoid pydantic version conflict ────────────
 # semgrep 1.163+ pulls mcp which needs pydantic>=2.11; safety needs pydantic<2.10.
@@ -123,22 +133,36 @@ FROM python:3.11-slim-bookworm AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ── Runtime system packages + Trivy apt repo ─────────────────────────────────
+# ── Runtime system packages + Trivy + Temurin JDK 21 apt repos ───────────────
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl gnupg wget \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg wget apt-transport-https \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
        | gpg --dearmor | tee /usr/share/keyrings/trivy.gpg > /dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
        | tee /etc/apt/sources.list.d/trivy.list \
+    && wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public \
+       | gpg --dearmor | tee /usr/share/keyrings/adoptium.gpg > /dev/null \
+    && echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" \
+       | tee /etc/apt/sources.list.d/adoptium.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
        nodejs \
-       default-jdk-headless \
+       temurin-21-jdk \
        maven \
        trivy \
        git \
     && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# ── Pre-warm Trivy vulnerability DB into the image ───────────────────────────
+# Bakes the DB in at build time so scans never depend on runtime network
+# access to ghcr.io (which may be blocked in the scan sandbox).
+ENV TRIVY_CACHE_DIR=/opt/trivy-cache
+RUN mkdir -p ${TRIVY_CACHE_DIR} \
+    && trivy fs --download-db-only --cache-dir ${TRIVY_CACHE_DIR} --quiet \
+    && chmod -R a+rwX ${TRIVY_CACHE_DIR}
 
 # ── Python venvs + Semgrep assets ────────────────────────────────────────────
 COPY --from=builder /opt/main-venv     /opt/main-venv

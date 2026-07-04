@@ -10,16 +10,30 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 import shutil
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from exceptions import TrivyScanError
 
-TRIVY_TIMEOUT = 600
 TRIVY_SUCCESS_EXIT_CODES = {0}
 TRIVY_DB_MAX_AGE_HOURS = 24  # refresh DB if older than this
+
+
+def _trivy_cache_dir() -> Path:
+    """
+    Cache dir trivy will use. Honours TRIVY_CACHE_DIR (set at image build
+    time so the DB is baked in and scans don't depend on runtime network
+    access). Falls back to trivy's own default under $HOME.
+    """
+    env_dir = os.environ.get("TRIVY_CACHE_DIR")
+    if env_dir:
+        return Path(env_dir)
+    return Path.home() / ".cache" / "trivy"
 
 
 logger = logging.getLogger(__name__)
@@ -38,9 +52,10 @@ def _trivy_cli() -> str:
 def _trivy_db_age_hours() -> float | None:
     """
     Return how many hours ago the Trivy DB was last updated, or None if unknown.
-    Trivy stores DB metadata at ~/.cache/trivy/db/metadata.json.
+    Trivy stores DB metadata at <cache-dir>/db/metadata.json.
     """
     candidates = [
+        _trivy_cache_dir() / "db" / "metadata.json",
         Path.home() / ".cache" / "trivy" / "db" / "metadata.json",
         Path.home() / "AppData" / "Local" / "trivy" / "db" / "metadata.json",
     ]
@@ -60,7 +75,7 @@ def _trivy_db_age_hours() -> float | None:
     return None
 
 
-def ensure_trivy_db(timeout: int = 300) -> None:
+def ensure_trivy_db(timeout: int | None = None) -> None:
     """
     Download or refresh the Trivy vulnerability database if it is missing
     or older than TRIVY_DB_MAX_AGE_HOURS hours.
@@ -83,7 +98,7 @@ def ensure_trivy_db(timeout: int = 300) -> None:
 
     try:
         result = subprocess.run(
-            [trivy, "fs", "--download-db-only", "--quiet"],
+            [trivy, "fs", "--download-db-only", "--cache-dir", str(_trivy_cache_dir()), "--quiet"],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -124,6 +139,21 @@ def _parse_trivy_json(stdout: str) -> dict:
     return {"Results": []}
 
 
+_MAVEN_RETRY_AFTER_RE = re.compile(r"Retry-After:\s*(\d+)", re.IGNORECASE)
+
+
+def _is_maven_rate_limited(stderr: str) -> int | None:
+    """
+    Return the suggested wait in seconds if stderr shows a Maven Central 429
+    (common when Trivy's Java analyzer, the SpotBugs Maven build, and OWASP
+    Dependency-Check all hit repo.maven.apache.org at once), else None.
+    """
+    if "429 Too Many Requests" not in stderr:
+        return None
+    m = _MAVEN_RETRY_AFTER_RE.search(stderr)
+    return int(m.group(1)) if m else 30
+
+
 def run_trivy_scan(repo_path: Path) -> dict:
     """
     Run trivy fs against the cloned repository in vulnerability scan mode.
@@ -146,25 +176,44 @@ def run_trivy_scan(repo_path: Path) -> dict:
         "--quiet",
         "--exit-code",
         "0",  # always exit 0
+        "--cache-dir",
+        str(_trivy_cache_dir()),
+        "--skip-db-update",  # DB is baked into the image — don't depend on network per-scan
+        "--offline-scan",  # never reach out to Maven Central etc. mid-scan — rely on the pre-warmed local repo
         "--scanners",
         "vuln",  # dependency CVEs only (no secret scan — Gitleaks handles that)
         abs_repo,
     ]
 
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=TRIVY_TIMEOUT,
-            check=False,
+    result = None
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=None,
+                check=False,
+            )
+        except OSError as exc:
+            raise TrivyScanError(f"Failed to run Trivy: {exc}") from exc
+
+        if result.returncode in TRIVY_SUCCESS_EXIT_CODES:
+            break
+        wait_s = _is_maven_rate_limited(result.stderr or "")
+        if wait_s is None:
+            break
+        logger.warning(
+            "Trivy hit Maven Central rate limit (attempt %d) — "
+            "waiting %ds as instructed.",
+            attempt,
+            wait_s,
         )
-    except subprocess.TimeoutExpired as exc:
-        raise TrivyScanError(f"Trivy scan timed out after {TRIVY_TIMEOUT}s.") from exc
-    except OSError as exc:
-        raise TrivyScanError(f"Failed to run Trivy: {exc}") from exc
+        time.sleep(wait_s)
 
     if result.returncode not in TRIVY_SUCCESS_EXIT_CODES:
         raise TrivyScanError(

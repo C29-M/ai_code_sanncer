@@ -76,6 +76,7 @@ SCANNER_SEVERITY_WEIGHTS: dict[str, dict[str, int]] = {
     "trufflehog": {"CRITICAL": 9},
     "spotbugs": {"HIGH": 7, "MEDIUM": 4, "LOW": 2},
     "owasp_depcheck": {"CRITICAL": 10, "HIGH": 7, "MEDIUM": 4, "LOW": 2},
+    "plpgsql": {"HIGH": 7, "MEDIUM": 4, "LOW": 2},
 }
 
 # ---------------------------------------------------------------------------
@@ -131,6 +132,11 @@ SEVERITY_DISPLAY: dict[str, dict[str, str]] = {
     },
     "owasp_depcheck": {
         "CRITICAL": "CRITICAL",
+        "HIGH": "HIGH",
+        "MEDIUM": "MEDIUM",
+        "LOW": "LOW",
+    },
+    "plpgsql": {
         "HIGH": "HIGH",
         "MEDIUM": "MEDIUM",
         "LOW": "LOW",
@@ -201,6 +207,10 @@ _EXT_TO_LANG: dict[str, str] = {
     ".tf": "terraform",
     ".yaml": "yaml",
     ".yml": "yaml",
+    ".sql": "sql",
+    ".pgsql": "sql",
+    ".plpgsql": "sql",
+    ".psql": "sql",
 }
 
 _TARGET_TO_LANG: dict[str, str] = {
@@ -1395,6 +1405,47 @@ def normalise_safety(raw_findings: list[dict]) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# PL/pgSQL normaliser
+# ---------------------------------------------------------------------------
+def normalise_plpgsql(raw_findings: list[dict]) -> list[dict]:
+    """Map plpgsql_runner findings to unified schema."""
+    _SEV_MAP = {"HIGH": "HIGH", "MEDIUM": "MEDIUM", "LOW": "LOW"}
+    out: list[dict] = []
+    for r in raw_findings:
+        raw_sev = (r.get("severity") or "MEDIUM").upper()
+        severity = _SEV_MAP.get(raw_sev, "MEDIUM")
+        rule_id = r.get("rule_id", "")
+        file_path = r.get("file", "")
+        cwe = r.get("cwe", "")
+        risk_score = compute_risk_score("plpgsql", raw_sev, None, r.get("category", "sast"))
+        out.append(
+            {
+                "tool": "plpgsql",
+                "rule_id": rule_id,
+                "severity": severity,
+                "language": "sql",
+                "file": file_path,
+                "line": int(r.get("line", 0)),
+                "snippet": safe_snippet(r.get("snippet", "")),
+                "description": r.get("description", rule_id),
+                "category": r.get("category", "sast"),
+                "cve_id": None,
+                "cvss_score": None,
+                "risk_score": risk_score,
+                "metadata": {
+                    "cwe": [cwe] if cwe else [],
+                    "owasp": "",
+                    "confidence": "MEDIUM",
+                    "impact": raw_sev,
+                    "likelihood": "MEDIUM",
+                    "shortlink": "",
+                },
+            }
+        )
+    return out
+
+
+# ---------------------------------------------------------------------------
 # OWASP Dependency-Check normaliser
 # ---------------------------------------------------------------------------
 def normalise_owasp_depcheck(raw_findings: list[dict]) -> list[dict]:
@@ -1506,6 +1557,7 @@ def normalise_all(
     trufflehog_findings: list[dict] | None = None,
     spotbugs_findings: list[dict] | None = None,
     owasp_depcheck_findings: list[dict] | None = None,
+    plpgsql_findings: list[dict] | None = None,
 ) -> list[dict]:
     """
     Normalise findings from all scanners, deduplicate, sort by
@@ -1529,6 +1581,8 @@ def normalise_all(
         unified.extend(normalise_spotbugs(spotbugs_findings))
     if owasp_depcheck_findings:
         unified.extend(normalise_owasp_depcheck(owasp_depcheck_findings))
+    if plpgsql_findings:
+        unified.extend(normalise_plpgsql(plpgsql_findings))
     unified = deduplicate(unified)
     unified.sort(key=lambda x: x["risk_score"], reverse=True)
     return unified[:MAX_FINDINGS]

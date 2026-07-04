@@ -25,10 +25,9 @@ from pathlib import Path
 
 from exceptions import ScannerError
 
-# Dedicated timeouts — separate from the main scanner pool (Problem #7)
-BUILD_TIMEOUT = 300  # seconds for Maven/Gradle compile
-SPOTBUGS_TIMEOUT = 300  # seconds for SpotBugs analysis
-TOTAL_TIMEOUT = 600  # hard cap for the whole SpotBugs stage
+# No timeout — Maven/Gradle build is allowed to take as long as it needs
+# (e.g. waiting out an upstream Maven Central rate limit).
+BUILD_TIMEOUT = None
 
 
 class SpotBugsScanError(ScannerError):
@@ -38,6 +37,11 @@ class SpotBugsScanError(ScannerError):
 
 # Severity mapping: SpotBugs uses 1 (High), 2 (Medium), 3 (Low)
 _PRIORITY_MAP = {"1": "HIGH", "2": "MEDIUM", "3": "LOW"}
+
+# Fully-qualified plugin goal — works even when the project's pom.xml does not
+# declare spotbugs-maven-plugin itself (the bare "spotbugs:spotbugs" prefix
+# only resolves when the plugin is already registered in the POM).
+_SPOTBUGS_PLUGIN_GOAL = "com.github.spotbugs:spotbugs-maven-plugin:4.8.6.0:spotbugs"
 
 
 def _has_java() -> bool:
@@ -69,7 +73,8 @@ def _run_maven_spotbugs(repo_path: Path) -> Path | None:
 
     cmd = [
         mvn,
-        "spotbugs:spotbugs",
+        "compile",  # ensure target/classes exists — the goal below doesn't bind to the lifecycle
+        _SPOTBUGS_PLUGIN_GOAL,
         "-DskipTests",  # don't run tests, just compile + analyse
         "-q",  # quiet
         "--batch-mode",

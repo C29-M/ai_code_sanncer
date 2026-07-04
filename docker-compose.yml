@@ -43,6 +43,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        NVD_API_KEY: ${NVD_API_KEY:-}
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -52,6 +54,7 @@ services:
       SEMGREP_USE_DOCKER: "false"
       SEMGREP_RULES_PATH: /opt/semgrep-rules
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      NVD_API_KEY: ${NVD_API_KEY:-}
       SCAN_TIMEOUT_SECONDS: "600"
     volumes:
       - ./backend/static:/home/scanner/static:ro

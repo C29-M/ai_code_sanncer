@@ -131,7 +131,14 @@ def run_eslint_scan(repo_path: Path) -> list[dict]:
 
     eslint, node_modules = _find_eslint_and_plugin(repo_path)
     major = _eslint_version(eslint)
-    is_v9_plus = major >= 9
+    # ESLint 8.57+ refuses legacy flags like --no-eslintrc whenever the repo
+    # has its own eslint.config.* (flat config) present, regardless of the
+    # CLI's own major version. Use the flat-config path in that case too.
+    has_flat_config = any(
+        (repo_path / name).exists()
+        for name in ("eslint.config.js", "eslint.config.mjs", "eslint.config.cjs", "eslint.config.ts")
+    )
+    is_v9_plus = major >= 9 or has_flat_config
 
     env = os.environ.copy()
     existing = env.get("NODE_PATH", "")

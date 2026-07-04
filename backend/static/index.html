@@ -325,8 +325,26 @@ function getCveImpact(desc){
 
 const CWE_IMPACT={"15":"An attacker can load a configuration file or module of their choice, potentially overriding security settings or injecting malicious code.","73":"An attacker can control which file your application opens or executes, potentially reading sensitive files or running malicious code.","20":"Malformed input can cause unexpected behavior — crashes, wrong data being processed, or security checks being bypassed.","400":"An attacker can send a crafted input that causes your server to consume 100% CPU or memory, making the app unavailable for everyone.","1333":"A specially crafted string can make your regex engine backtrack catastrophically — freezing your server for seconds or minutes with a single request.","208":"Attackers can measure response time differences to determine if a secret is valid — like guessing passwords character by character based on how long comparisons take.","94":"An attacker can execute arbitrary code inside your server process — full application takeover.","20":"Unvalidated input reaching sensitive operations can cause crashes, incorrect behavior, or security bypasses.","22":"An attacker can read any file on your server by typing paths like ../../secret.txt.","78":"An attacker can run any command on your server. Full server takeover.","79":"Attackers can inject scripts into your pages. Your users' sessions can be stolen.","89":"An attacker can read, change, or delete your entire database. They can also bypass your login page.","95":"Your server runs code that the attacker typed. By sending crafted input, they can do anything on your server.","200":"Sensitive data leaks to people who shouldn't see it.","209":"Detailed error messages help attackers map your server internals.","259":"A password or key is in your code. Anyone who reads the source has it permanently.","287":"Your login can be bypassed. Attackers can access any account without a password.","311":"Data is sent or stored without encryption. Anyone monitoring can read it.","326":"The encryption used is too weak — modern hardware can crack it.","327":"A broken algorithm (MD5/SHA1/DES) is in use — known to be breakable.","338":"Security tokens or session IDs use predictable random numbers. Attackers can guess them.","352":"Attackers can trick your logged-in users into performing actions without their knowledge.","434":"Attackers can upload malicious files and run them on your server.","502":"Attackers can execute code by sending specially crafted data.","601":"Attackers craft URLs that look like yours but send users to malicious pages.","798":"Credentials are permanently in your source. Once the code is shared, those credentials are compromised forever.","915":"Attackers can set fields they shouldn't by sending crafted form data.","918":"Attackers can make your server fetch internal URLs — admin panels, AWS metadata, internal APIs.","942":"Any website can make requests to your API on behalf of your users.","1004":"Cookies can be read by JavaScript. Any XSS lets attackers steal all sessions.","1275":"Cookies are sent on cross-site requests — users are vulnerable to CSRF."};
 
-function getImpact(cweNum,cat,desc){
+const SPOTBUGS_INFO={
+  "EI_EXPOSE_REP":{impact:"This method hands back a direct reference to an internal mutable object (a List, Map, Date, array, etc.). Any caller can then silently mutate your object's internal state from outside, bypassing whatever invariants the class was meant to protect.",why:"Exposed internal representation breaks encapsulation. It's rarely directly exploitable on its own, but it's a real correctness/security smell — worth a defensive copy."},
+  "EI_EXPOSE_REP2":{impact:"This constructor or setter stores a caller-supplied mutable object (List, Map, Date, array, etc.) directly into a field without copying it. The caller retains a live reference and can mutate your object's internal state after construction.",why:"Storing a mutable reference instead of a defensive copy means external code can silently change this object's state later — a correctness and encapsulation bug, low severity on its own."},
+  "RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE":{impact:"Dead code: this null check can never trigger because static analysis proved the value is always non-null at this point. It doesn't cause a vulnerability by itself, but it usually signals a misunderstanding of the actual control flow nearby — worth double-checking the logic.",why:"This is a code-clarity finding, not an exploitable issue — flagged because redundant checks often hide a real bug in the surrounding logic."},
+  "REC_CATCH_EXCEPTION":{impact:"Catching the broad `Exception` class swallows errors it was never meant to handle — including bugs like NullPointerException — silently masking failures that should have crashed loudly or been logged distinctly.",why:"Overly broad exception handling can hide real failures (including security-relevant ones) behind a generic catch block, making incidents harder to detect and debug."},
+  "RV_RETURN_VALUE_IGNORED":{impact:"The return value of this call is ignored, but the method has no side effects without it (e.g. String.replace(), Path.resolve()) — meaning the operation this code intended to perform silently does nothing.",why:"Discarding a return value that the method depends on for its effect is a correctness bug — the operation appears to run but has no real effect."},
+  "RV_DONT_JUST_NULL_CHECK_READLINE":{impact:"This code checks that readLine() returned non-null but then discards the actual line content — meaning the data read from the process/stream is silently thrown away instead of being used.",why:"Reading process output and then discarding it usually means the intended logic (e.g. parsing a command's result) never actually executes — a functional gap, not a direct vulnerability."},
+  "VO_VOLATILE_INCREMENT":{impact:"Incrementing a volatile field (`field++`) is not atomic — under concurrent access two threads can race and one increment can be silently lost, corrupting a counter or state flag.",why:"Volatile guarantees visibility but not atomicity. Under real concurrent load this can cause subtly wrong counts or state — switch to AtomicInteger/AtomicLong or synchronize the increment."},
+  "EC_UNRELATED_CLASS_AND_INTERFACE":{impact:"This code compares or casts between two types that have no inheritance relationship — the comparison can never be true and likely indicates a copy-paste or typo bug that will misbehave at runtime.",why:"A comparison between unrelated types is almost always a bug — it silently always evaluates false (or throws ClassCastException), which can mask broken authorization/equality checks."},
+  "WMI_WRONG_MAP_ITERATOR":{impact:"This code iterates a Map's keySet() and then looks up the value for each key — doing two hash lookups per entry instead of one. On a hot path this is a real performance issue, not a security one.",why:"Purely a performance inefficiency (iterate entrySet() instead of keySet()+get()) — flagged for code quality, not exploitability."},
+  "DM_DEFAULT_ENCODING":{impact:"This code converts bytes to/from a String without specifying a charset, so it silently uses the JVM's platform-default encoding. On a different OS/locale than where it was written, this can corrupt non-ASCII data or produce different output for the same bytes.",why:"Platform-dependent text encoding is a portability and correctness bug — output that's correct in dev can corrupt in production on a server with a different default locale."},
+  "DM_BOXED_PRIMITIVE_FOR_PARSING":{impact:"This code boxes a primitive (e.g. `new Integer(str)`) just to parse a string, which is slower and creates needless garbage compared to `Integer.parseInt(str)` directly. Purely a performance/style issue.",why:"Inefficient parsing pattern — no security impact, flagged for code quality and minor performance overhead."},
+  "RC_REF_COMPARISON":{impact:"This code compares two boxed values (Short, Integer, Long, etc.) with `==` instead of `.equals()`. Outside the cached small-integer range, two equal values can be different object instances, so this comparison can silently return false when the values are actually equal — a real correctness bug.",why:"Reference comparison of boxed types is a classic Java pitfall — it can cause logic to behave inconsistently depending on the magnitude of the values being compared."},
+  "CT_CONSTRUCTOR_THROW":{impact:"An exception can escape this constructor, leaving the object in a partially-constructed state. In rare cases (with finalizers, or under certain serialization paths) a partially-initialized object can become reachable, defeating constructor invariants.",why:"Exceptions escaping constructors are a defense-in-depth concern, not a directly exploitable bug in most code — flagged so the invariant gets reviewed."},
+  "UC_USELESS_OBJECT":{impact:"An object is built up (mutated) but the result is never used or returned — the computation this code performs is silently thrown away, meaning the intended business logic doesn't actually happen.",why:"This is a dead-code/correctness finding — the work being done has no effect on the program, usually pointing at a missing return or assignment."},
+};
+
+function getImpact(cweNum,cat,desc,ruleId){
   if(cat==="cve")return getCveImpact(desc);
+  if(ruleId&&SPOTBUGS_INFO[ruleId])return SPOTBUGS_INFO[ruleId].impact;
   if(cweNum&&CWE_IMPACT[cweNum])return CWE_IMPACT[cweNum];
   const d=(desc||"").toLowerCase();
   if(d.includes("sql"))return CWE_IMPACT["89"];if(d.includes("eval"))return CWE_IMPACT["95"];if(d.includes("xss")||d.includes("cross-site"))return CWE_IMPACT["79"];if(d.includes("hardcoded")||d.includes("hard-coded"))return CWE_IMPACT["798"];if(d.includes("path traversal"))return CWE_IMPACT["22"];if(d.includes("csrf"))return CWE_IMPACT["352"];if(d.includes("ssrf"))return CWE_IMPACT["918"];if(d.includes("deserial"))return CWE_IMPACT["502"];if(d.includes("redirect"))return CWE_IMPACT["601"];if(d.includes("wildcard")||d.includes("cors"))return CWE_IMPACT["942"];if(d.includes("private key")||d.includes("api key")||d.includes("password")||d.includes("credential"))return CWE_IMPACT["798"];
@@ -335,8 +353,9 @@ function getImpact(cweNum,cat,desc){
 
 const CWE_FIX={"22":{text:"Never build file paths from user input. Use path.basename() and confirm the resolved path stays inside your allowed folder.",code:"// Bad\nfs.readFileSync('./uploads/'+req.params.name);\n// Good\nconst safe=path.resolve('./uploads',path.basename(req.params.name));\nif(!safe.startsWith(path.resolve('./uploads')))throw new Error('Invalid');\nfs.readFileSync(safe);"},"78":{text:"Never pass user input to shell commands. Use spawn() with shell:false.",code:"// Bad\nexec('ping '+userInput);\n// Good\nspawn('ping',[userInput],{shell:false});"},"79":{text:"Always escape user content before inserting it into HTML.",code:"// Bad\nres.send('<p>Hello '+req.query.name+'</p>');\n// Good\nconst name=String(req.query.name).replace(/</g,'&lt;').replace(/>/g,'&gt;');\nres.send('<p>Hello '+name+'</p>');"},"89":{text:"Use parameterized queries — pass user input as a separate argument.",code:"// Bad\ndb.query(\"SELECT * FROM users WHERE name = '\"+req.body.name+\"'\");\n// Good\ndb.query('SELECT * FROM users WHERE name = ?',[req.body.name]);"},"95":{text:"Remove eval() completely. For JSON use JSON.parse().",code:"// Bad\neval(req.body.code);\n// Good\nconst data=JSON.parse(req.body.json);"},"259":{text:"Move all credentials out of your source code and into environment variables.",code:"// Bad\nconst DB_PASS='MySecret';\n// Good\nconst DB_PASS=process.env.DB_PASSWORD;"},"327":{text:"Replace MD5, SHA1, and DES — they are broken. Use bcrypt for passwords.",code:"// Bad\ncrypto.createHash('md5').update(password).digest('hex');\n// Good\nconst bcrypt=require('bcrypt');\nawait bcrypt.hash(password,12);"},"338":{text:"Use a cryptographically secure random generator for tokens and session IDs.",code:"// Bad\nMath.random().toString(36);\n// Good\nrequire('crypto').randomBytes(32).toString('hex');"},"352":{text:"Add CSRF tokens to all forms that change data.",code:"const csrf=require('csurf');\napp.use(csrf());"},"601":{text:"Validate redirect destinations against a whitelist.",code:"// Bad\nres.redirect(req.query.next);\n// Good\nconst allowed=['/dashboard','/home'];\nres.redirect(allowed.includes(req.query.next)?req.query.next:'/');"},"798":{text:"Remove the hardcoded credential NOW and rotate it immediately.",code:"// Bad\nconst API_KEY='sk-abc123';\n// Good\nconst API_KEY=process.env.MY_API_KEY;"},"942":{text:"Replace '*' with your specific allowed domains in the CORS configuration.",code:"// Bad\ncors({origin:'*'})\n// Good\ncors({origin:['https://yourapp.com']})"},"918":{text:"Validate all URLs before fetching. Block requests to localhost and internal IP ranges.",code:"const url=new URL(req.body.url);\nif(['localhost','127.0.0.1'].includes(url.hostname))throw new Error('Blocked');\nawait fetch(url.toString());"},"1004":{text:"Set HttpOnly on all session cookies.",code:"res.cookie('session',token,{httpOnly:true,secure:true,sameSite:'strict'});"}};
 
-function getFix(cweNum,cat,desc){
+function getFix(cweNum,cat,desc,ruleId){
   if(cat==="cve")return{text:"Upgrade to the fixed version shown above. Update the version in your package file and run npm install or pip install."};
+  if(ruleId&&SPOTBUGS_INFO[ruleId]&&SPOTBUGS_INFO[ruleId].fix)return SPOTBUGS_INFO[ruleId].fix;
   if(cweNum&&CWE_FIX[cweNum])return CWE_FIX[cweNum];
   const d=(desc||"").toLowerCase();
   if(d.includes("eval"))return CWE_FIX["95"];if(d.includes("sql"))return CWE_FIX["89"];if(d.includes("xss")||d.includes("cross-site"))return CWE_FIX["79"];if(d.includes("hardcoded")||d.includes("hard-coded"))return CWE_FIX["798"];if(d.includes("csrf"))return CWE_FIX["352"];if(d.includes("redirect"))return CWE_FIX["601"];if(d.includes("wildcard")||d.includes("cors"))return CWE_FIX["942"];if(d.includes("random")||d.includes("pseudo"))return CWE_FIX["338"];if(d.includes("md5")||d.includes("sha1"))return CWE_FIX["327"];if(d.includes("path")&&d.includes("trav"))return CWE_FIX["22"];if(d.includes("command")||d.includes("subprocess"))return CWE_FIX["78"];if(cat==="secrets"||cat==="history")return CWE_FIX["798"];
@@ -345,7 +364,8 @@ function getFix(cweNum,cat,desc){
 
 const CWE_WHY={"95":{CRITICAL:"eval() with user input is Critical because the scanner traced the exact data flow from user input to eval(). The attack is proven — an attacker just sends crafted text to run any code on your server.",HIGH:"eval() with semi-controlled input is High. Even indirect control can lead to code execution.",MEDIUM:"eval() is used but the input source is unclear. Investigate whether user data can reach this."},"89":{CRITICAL:"SQL injection is Critical because the scanner proved user input flows directly into your SQL query. The attacker can read, modify, or delete your entire database.",HIGH:"SQL injection is very likely — user input is close to the SQL query.",MEDIUM:"A potential SQL injection pattern. Confirm whether user input actually reaches this query."},"78":{CRITICAL:"Command injection is Critical because user input reaches a shell command directly. The attacker types their command, your server executes it.",HIGH:"Shell command execution with user-influenced input. If exploitable, full server compromise."},"798":{CRITICAL:"Hardcoded credentials are Critical because they are permanently exposed the moment the code is shared. GitHub bots crawl for secrets within seconds of a push.",HIGH:"A hardcoded credential was found. Even test credentials end up reused in production.",MEDIUM:"A possible credential pattern. Verify if real, then move to environment variables."},"79":{CRITICAL:"XSS is Critical because the scanner proved user input reaches HTML output with no escaping. Attackers can steal sessions from every visitor.",HIGH:"User input likely reaches HTML output without proper escaping.",MEDIUM:"A potential XSS path exists. Whether exploitable depends on surrounding validation."},"942":{HIGH:"Wildcard CORS means any website can make requests to your API on behalf of your logged-in users — reading data, performing actions, or exfiltrating information.",MEDIUM:"CORS policy may be too permissive. Review what origins are allowed."},"352":{HIGH:"Missing CSRF protection means any other website can silently submit your forms on behalf of your logged-in users.",MEDIUM:"Possible missing CSRF protection. Check if this endpoint changes data."},"338":{HIGH:"Predictable random values for session IDs or tokens mean attackers can enumerate and guess valid sessions.",MEDIUM:"Weak randomness in a security context. Confirm if used for anything security-sensitive."},"259":{CRITICAL:"A verified password or API key is hardcoded. The moment this code is on GitHub or shared, that credential is permanently compromised.",HIGH:"A hardcoded credential was detected. Even dev keys end up in production.",MEDIUM:"A possible hardcoded credential. Verify if real, then move out of source code."},"918":{HIGH:"SSRF lets attackers use your server as a proxy to reach internal services — your admin panel, AWS metadata endpoint, or internal APIs.",MEDIUM:"A server-side request is made with a URL that may come from user input."},"502":{CRITICAL:"Unsafe deserialization is Critical — it is a direct path to remote code execution. Attacker sends crafted data, your server deserializes it, their code runs.",HIGH:"Deserialization of potentially untrusted data detected."},"601":{MEDIUM:"Open redirects let attackers craft URLs like yoursite.com/go?to=evil.com — your trusted domain makes the phishing link look legitimate.",LOW:"A possible open redirect. Confirm if the destination URL can be controlled by users."}};
 
-function getWhy(cweNum,sev,cat,desc,cvssScore){
+function getWhy(cweNum,sev,cat,desc,cvssScore,ruleId){
+  if(ruleId&&SPOTBUGS_INFO[ruleId])return SPOTBUGS_INFO[ruleId].why;
   if(cat==="cve"){
     const s=cvssScore!=null?Number(cvssScore).toFixed(1):null;
     const scoreStr=s?`a CVSS score of ${s}/10`:"a high severity score in the NVD database";
@@ -412,7 +432,7 @@ function exportPDF(){
   const today=new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
   let crit=0,high=0,med=0,low=0;
   ALL_FINDINGS.forEach(r=>{const s=r.severity||"INFO";if(s==="CRITICAL")crit++;else if(s==="HIGH")high++;else if(s==="MEDIUM")med++;else low++;});
-  const top10=[...ALL_FINDINGS].sort((a,b)=>(b.adjusted_risk_score||b.risk_score||0)-(a.adjusted_risk_score||a.risk_score||0)).slice(0,10);
+  const allSorted=[...ALL_FINDINGS].sort((a,b)=>(b.adjusted_risk_score||b.risk_score||0)-(a.adjusted_risk_score||a.risk_score||0));
   const st=d.scanner_status||{};
   const scanCounts={};
   ALL_FINDINGS.forEach(r=>{const t=(r.tool||"semgrep").toLowerCase();scanCounts[t]=(scanCounts[t]||0)+1;});
@@ -420,14 +440,16 @@ function exportPDF(){
   const SEV_BG={CRITICAL:"#fef2f2",HIGH:"#fffbeb",MEDIUM:"#fefce8",LOW:"#eff6ff",INFO:"#eff6ff"};
   const SEV_BORDER={CRITICAL:"#fca5a5",HIGH:"#fcd34d",MEDIUM:"#fde68a",LOW:"#bfdbfe",INFO:"#bfdbfe"};
 
-  const findingsHtml=top10.map((r,i)=>{
+  function renderPdfFinding(r){
     const sev=r.severity||"INFO";
     const title=findingTitle(r);
     const cat=(r.category||"").toLowerCase();
     const cweObj=parseCwe(r.cwe);
     const cweNum=cweObj?cweObj.num:null;
-    const impact=getImpact(cweNum,cat,r.description||"");
-    const fix=getFix(cweNum,cat,r.description||"");
+    const ruleId=r.rule_id||r.check_id||"";
+    const impact=getImpact(cweNum,cat,r.description||"",ruleId);
+    const fix=getFix(cweNum,cat,r.description||"",ruleId);
+    const why=getWhy(cweNum,sev,cat,r.description||"",r.cvss_score,ruleId);
     const score=(r.adjusted_risk_score||r.risk_score||0).toFixed(1);
     const tool=(r.tool||"").toUpperCase();
     const file=shortPath(r.file||"");
@@ -445,18 +467,49 @@ function exportPDF(){
         </div>
       </div>
       ${!isCve&&file?`<div style="font-size:11px;color:#64748b;margin-bottom:8px;font-family:monospace;background:#f8fafc;padding:3px 8px;border-radius:3px;display:inline-block;">${escHtml(file)}${escHtml(line)}</div>`:""}
-      ${isCve&&r.cve_id?`<div style="margin-bottom:8px;"><span style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:3px;padding:2px 8px;font-size:11px;font-weight:600;font-family:monospace;">${escHtml(r.cve_id)}</span></div>`:""}
+      ${isCve&&file?`<div style="font-size:11px;color:#64748b;margin-bottom:8px;">Library file: <span style="font-family:monospace;background:#f8fafc;padding:2px 6px;border-radius:3px;">${escHtml(file.split("/").pop()||file)}</span></div>`:""}
+      ${isCve&&r.cve_id?`<div style="margin-bottom:8px;display:flex;gap:6px;">
+        <span style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:3px;padding:2px 8px;font-size:11px;font-weight:600;font-family:monospace;">${escHtml(r.cve_id)}</span>
+        ${r.cvss_score!=null?`<span style="background:#fff7ed;color:#d97706;border:1px solid #fcd34d;border-radius:3px;padding:2px 8px;font-size:11px;font-weight:600;">CVSS ${Number(r.cvss_score).toFixed(1)} / 10</span>`:""}
+      </div>`:""}
+      ${isCve&&r.snippet?`<div style="margin-bottom:10px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:4px;">📦 Installed version — upgrade to</div>
+        <div style="font-size:12px;font-family:'SFMono-Regular',Consolas,monospace;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:6px 10px;color:#0f172a;">${escHtml(r.snippet)}</div>
+      </div>`:""}
       <div style="margin-bottom:10px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:4px;">What this means</div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:4px;">What could happen if this isn't fixed</div>
         <div style="font-size:12px;line-height:1.6;color:#374151;">${escHtml(impact)}</div>
       </div>
-      ${fix?`<div style="font-size:12px;line-height:1.6;background:#f0fdf4;border-left:3px solid #16a34a;padding:8px 12px;border-radius:0 4px 4px 0;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#15803d;margin-bottom:4px;">How to fix</div>
+      ${fix?`<div style="margin-bottom:10px;font-size:12px;line-height:1.6;background:#f0fdf4;border-left:3px solid #16a34a;padding:8px 12px;border-radius:0 4px 4px 0;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#15803d;margin-bottom:4px;">How to fix this</div>
         <div style="color:#14532d;">${escHtml(fix.text)}</div>
         ${fix.code?`<pre style="margin-top:6px;font-family:'SFMono-Regular',Consolas,monospace;font-size:10px;background:#fff;border:1px solid #bbf7d0;border-radius:3px;padding:6px 8px;color:#14532d;white-space:pre-wrap;word-break:break-all;">${escHtml(fix.code)}</pre>`:""}
       </div>`:""}
+      ${why?`<div style="font-size:12px;line-height:1.6;background:#faf5ff;border-left:3px solid #9333ea;padding:8px 12px;border-radius:0 4px 4px 0;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#7e22ce;margin-bottom:4px;">Why is this rated ${escHtml(sev)}?</div>
+        <div style="color:#581c87;">${escHtml(why)}</div>
+      </div>`:""}
+    </div>`;
+  }
+
+  const urgentFindings=allSorted.filter(isFixRightAway);
+  const fixNowHtml=urgentFindings.map(r=>{
+    const title=findingTitle(r),filePath=shortPath(r.file||""),lineNum=r.line||0,action=getFixNowAction(r),tool=(r.tool||"").toUpperCase();
+    const isCve=(r.category||"").toLowerCase()==="cve";
+    const locationText=`${filePath}${!isCve&&lineNum>0?`, line ${lineNum}`:""}`;
+    return`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #fecaca;page-break-inside:avoid;">
+      <div style="font-size:14px;line-height:1.4;">🔴</div>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:12px;color:#7f1d1d;">${escHtml(title)} <span style="font-size:9px;font-weight:600;color:#991b1b;background:#fee2e2;border-radius:3px;padding:1px 6px;margin-left:4px;">${escHtml(tool)}</span></div>
+        <div style="font-size:10px;color:#b91c1c;font-family:monospace;margin-top:2px;">${escHtml(locationText)}</div>
+        <div style="font-size:11px;color:#7f1d1d;margin-top:3px;">${escHtml(action)}</div>
+      </div>
     </div>`;
   }).join("");
+
+  const criticalFindings=allSorted.filter(r=>(r.severity||"")==="CRITICAL");
+  const criticalHtml=criticalFindings.map(renderPdfFinding).join("");
+  const findingsHtml=allSorted.map(renderPdfFinding).join("");
 
   const scannerRowsHtml=ALL_SCANNERS.map(name=>{
     const s=st[name]||"na";
@@ -485,6 +538,15 @@ function exportPDF(){
   </div>
 </div>
 
+${urgentFindings.length?`<div style="margin-bottom:28px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:16px;page-break-inside:avoid;">
+  <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
+    <div style="font-size:14px;font-weight:800;color:#7f1d1d;">🚨 Fix These Right Away</div>
+    <div style="font-size:10px;font-weight:700;color:#fff;background:#dc2626;border-radius:10px;padding:1px 8px;">${urgentFindings.length} issue${urgentFindings.length!==1?"s":""}</div>
+  </div>
+  <div style="font-size:11px;color:#b91c1c;margin-bottom:8px;">Active security risks — requires immediate action</div>
+  ${fixNowHtml}
+</div>`:""}
+
 <div style="margin-bottom:28px;">
   <h2>Scan Summary</h2>
   <div style="display:flex;gap:10px;margin-bottom:16px;">
@@ -500,11 +562,16 @@ function exportPDF(){
   </table>
 </div>
 
+${criticalFindings.length?`<div style="margin-bottom:28px;">
+  <h2 style="color:#dc2626;border-bottom-color:#fca5a5;">🚨 Top Critical Findings</h2>
+  <div style="font-size:11px;color:#64748b;margin-bottom:14px;">${criticalFindings.length} critical issue${criticalFindings.length!==1?"s":""} requiring immediate attention.</div>
+  ${criticalHtml}
+</div>`:""}
+
 <div>
-  <h2>Top 10 Findings — by Risk Score</h2>
-  <div style="font-size:11px;color:#64748b;margin-bottom:14px;">Highest-priority issue${top10.length!==1?"s":""} from this scan, ranked by adjusted risk score.</div>
+  <h2>All Findings — by Risk Score</h2>
+  <div style="font-size:11px;color:#64748b;margin-bottom:14px;">${allSorted.length} issue${allSorted.length!==1?"s":""} from this scan, ranked by adjusted risk score.</div>
   ${findingsHtml}
-  ${ALL_FINDINGS.length>10?`<div style="text-align:center;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#64748b;font-size:12px;margin-top:4px;">+ ${ALL_FINDINGS.length-10} additional issue${ALL_FINDINGS.length-10!==1?"s":""} — view in the scanner UI</div>`:""}
 </div>
 
 <div style="margin-top:28px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;display:flex;justify-content:space-between;">
@@ -513,10 +580,16 @@ function exportPDF(){
 <script>window.onload=function(){window.print();};<\/script>
 </body></html>`;
 
-  const pw=window.open("","_blank","width=980,height=820");
-  if(!pw){alert("Pop-up blocked — allow pop-ups for localhost and try again.");return;}
-  pw.document.write(html);
-  pw.document.close();
+  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.target="_blank";
+  a.rel="noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 
 function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
@@ -579,7 +652,8 @@ function renderCard(r){
   const sev=r.severity||"INFO",meta=r.metadata||{},cat=(r.category||"sast").toLowerCase();
   const cwe=parseCwe(meta.cwe),cweNum=cwe?cwe.num:null;
   const title=findingTitle(r),problem=(r.description||"").split(/\.\s+/)[0].trim()||r.description||"";
-  const impact=getImpact(cweNum,cat,r.description),fix=getFix(cweNum,cat,r.description),why=getWhy(cweNum,sev,cat,r.description,r.cvss_score);
+  const ruleId=r.rule_id||r.check_id||"";
+  const impact=getImpact(cweNum,cat,r.description,ruleId),fix=getFix(cweNum,cat,r.description,ruleId),why=getWhy(cweNum,sev,cat,r.description,r.cvss_score,ruleId);
   const badgeLabel=SEV_LABEL[sev]||sev,snippet=r.snippet||"",filePath=shortPath(r.file||""),lineNum=r.line||0;
   const isCve=cat==="cve",owaspVal=Array.isArray(meta.owasp)?meta.owasp[0]:(meta.owasp||""),sgLink=meta.shortlink||"";
   const riskScore=r.risk_score!=null?r.risk_score:"",dupBadge=r._confirmed_by>1?`<span class="confirmed-badge">Confirmed by ${r._confirmed_by} rules</span>`:"";
