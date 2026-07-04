@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# .githooks/pre-push
+# Runs before every `git push`. Exit non-zero to abort the push.
+
+set -euo pipefail
+
+echo "--- pre-push: running checks ---"
+
+# Locate the backend directory relative to this hook
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+BACKEND="$REPO_ROOT/backend"
+
+# 1. Unit tests
+echo "[1/2] pytest ..."
+cd "$BACKEND"
+
+if [ -d "venv" ]; then
+    PYTHON="$BACKEND/venv/Scripts/python"
+elif command -v python3 &>/dev/null; then
+    PYTHON="python3"
+else
+    PYTHON="python"
+fi
+
+"$PYTHON" -m pytest tests/ -q --tb=short
+echo "      pytest passed"
+
+# 2. Secret scan — refuse to push if secrets are detected in staged/committed diff
+echo "[2/2] checking for accidental secrets ..."
+if command -v gitleaks &>/dev/null; then
+    gitleaks detect --source "$REPO_ROOT" --no-git -q 2>/dev/null || {
+        echo "ERROR: gitleaks found potential secrets. Push aborted."
+        echo "       Run 'gitleaks detect --source . --no-git' to see details."
+        exit 1
+    }
+    echo "      no secrets found"
+else
+    echo "      gitleaks not installed — skipping secret scan"
+fi
+
+echo "--- pre-push: all checks passed ---"
