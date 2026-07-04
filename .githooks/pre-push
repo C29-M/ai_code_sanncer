@@ -28,9 +28,10 @@ echo "      pytest passed"
 # 2. Secret scan — refuse to push if secrets are detected in staged/committed diff
 echo "[2/2] checking for accidental secrets ..."
 if command -v gitleaks &>/dev/null; then
-    gitleaks detect --source "$REPO_ROOT" --no-git -q 2>/dev/null || {
+    GITLEAKS_OUT=$(gitleaks detect --source "$REPO_ROOT" --no-git --no-banner 2>&1) || {
         echo "ERROR: gitleaks found potential secrets. Push aborted."
         echo "       Run 'gitleaks detect --source . --no-git' to see details."
+        echo "$GITLEAKS_OUT"
         exit 1
     }
     echo "      no secrets found"
